@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drill</title>
+<style>
+  :root{
+    --ink:#141320;          /* backdrop */
+    --ink-2:#1d1b2e;        /* raised chrome */
+    --line:#2c2941;         /* hairlines */
+    --paper:#f7f6f2;        /* the card face */
+    --paper-ink:#201d2b;    /* text on paper */
+    --muted:#8a86a3;        /* dim text on ink */
+    --violet:#7c6cf0;       /* primary accent */
+    --violet-soft:#2a2550;
+    --again:#e06c75;
+    --hard:#d3a24a;
+    --good:#5ab98b;
+    --easy:#5aa6e0;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--ink); color:#e9e7f2; font-family:var(--sans);
+    display:flex; flex-direction:column; min-height:100dvh;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{
+    display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;
+    padding:.8rem 1rem; border-bottom:1px solid var(--line); background:var(--ink-2);
+  }
+  .brand{font-weight:700; letter-spacing:-.02em; font-size:1.05rem}
+  .brand .dot{color:var(--violet)}
+  .counts{font-family:var(--mono); font-size:.78rem; color:var(--muted); margin-right:auto}
+  .counts b{color:#e9e7f2; font-weight:600}
+  .tools{display:flex; gap:.4rem; flex-wrap:wrap}
+  .tools button, .file-btn{
+    font-family:var(--mono); font-size:.72rem; color:var(--muted);
+    background:transparent; border:1px solid var(--line); border-radius:7px;
+    padding:.4rem .55rem; cursor:pointer;
+  }
+  .tools button:hover, .file-btn:hover{color:#e9e7f2; border-color:var(--violet)}
+  .file-btn input{display:none}
+
+  .bar{height:2px; background:var(--line)}
+  .bar > i{display:block; height:100%; width:0; background:var(--violet); transition:width .25s ease}
+
+  main{flex:1; display:flex; align-items:center; justify-content:center; padding:1.1rem}
+  .card{
+    width:100%; max-width:640px; background:var(--paper); color:var(--paper-ink);
+    border-radius:16px; padding:1.5rem 1.5rem 1.25rem; box-shadow:0 18px 50px -20px #000;
+    display:flex; flex-direction:column; min-height:340px;
+  }
+  .meta{display:flex; align-items:center; gap:.5rem; margin-bottom:1.1rem; flex-wrap:wrap}
+  .path{font-family:var(--mono); font-size:.72rem; color:#6d6885}
+  .chip{
+    font-family:var(--mono); font-size:.66rem; text-transform:uppercase; letter-spacing:.06em;
+    padding:.16rem .45rem; border-radius:5px; margin-left:auto;
+  }
+  .chip.concept{background:#ece9ff; color:#5b4fd0}
+  .chip.applied{background:#e4f3ec; color:#2f8a63}
+
+  .q, .a{font-size:1.16rem; line-height:1.5}
+  .q{font-weight:560}
+  .a{border-top:1px dashed #d9d6cd; margin-top:1.05rem; padding-top:1.05rem; color:#332f40}
+  .label{font-family:var(--mono); font-size:.66rem; letter-spacing:.08em; text-transform:uppercase; color:#a19cae; margin-bottom:.35rem}
+  pre{background:#1d1b2e; color:#e9e7f2; border-radius:9px; padding:.7rem .8rem; overflow:auto; font-family:var(--mono); font-size:.82rem; line-height:1.45}
+  code{font-family:var(--mono); font-size:.9em; background:#00000010; padding:.05em .3em; border-radius:4px}
+  pre code{background:none; padding:0}
+
+  .spacer{flex:1}
+  .actions{margin-top:1.2rem; display:flex; gap:.5rem}
+  .reveal{
+    flex:1; font-family:var(--sans); font-size:.95rem; font-weight:600; color:#fff;
+    background:var(--violet); border:none; border-radius:10px; padding:.85rem; cursor:pointer;
+  }
+  .grades{display:grid; grid-template-columns:repeat(4,1fr); gap:.5rem; flex:1}
+  .grade{
+    font-family:var(--sans); border:none; border-radius:10px; padding:.7rem .3rem; cursor:pointer;
+    color:#fff; font-weight:600; font-size:.86rem; display:flex; flex-direction:column; gap:.1rem; align-items:center;
+  }
+  .grade small{font-family:var(--mono); font-weight:400; font-size:.62rem; opacity:.85}
+  .g-again{background:var(--again)} .g-hard{background:var(--hard)}
+  .g-good{background:var(--good)} .g-easy{background:var(--easy)}
+
+  .empty{text-align:center; color:var(--muted); max-width:420px}
+  .empty h2{color:#e9e7f2; font-weight:650; margin:0 0 .4rem}
+  .empty p{margin:.3rem 0; line-height:1.5; font-size:.92rem}
+  .hint{padding:.5rem 1rem 1rem; text-align:center; color:#5b5772; font-family:var(--mono); font-size:.68rem}
+  @media (max-width:520px){ .hint{display:none} .grade small{display:none} }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">drill<span class="dot">.</span></div>
+  <div class="counts" id="counts"></div>
+  <div class="tools">
+    <label class="file-btn">load cards.json<input id="loadCards" type="file" accept=".json,application/json"></label>
+    <button id="exportProg">export progress</button>
+    <label class="file-btn">import progress<input id="importProg" type="file" accept=".json,application/json"></label>
+  </div>
+</header>
+<div class="bar"><i id="progbar"></i></div>
+
+<main id="main"></main>
+<div class="hint" id="hint">space reveal &nbsp;·&nbsp; 1 again &nbsp; 2 hard &nbsp; 3 good &nbsp; 4 easy</div>
+
+<script>
+/* ---- data: the JSON card file is the source of truth; nothing is bundled ---- */
+const PROG_KEY = "drill.progress.v1";
+const DAY = 86400000;
+const today = () => new Date().toISOString().slice(0,10);
+const addDays = (n) => new Date(Date.now()+n*DAY).toISOString().slice(0,10);
+
+/* progress store, guarded so it degrades to memory-only in sandboxed previews */
+let mem = {};
+const store = {
+  read(){ try{ return JSON.parse(localStorage.getItem(PROG_KEY)) || {}; }catch(e){ return mem; } },
+  write(o){ mem=o; try{ localStorage.setItem(PROG_KEY, JSON.stringify(o)); }catch(e){} }
+};
+
+let cards = [];
+let prog = store.read();
+let queue = [], current = null, shown = false, doneCount = 0;
+
+/* ---- SM-2 lite ---- */
+function schedule(card, grade){
+  const p = prog[card.id] || {ease:2.5, interval:0, reps:0, lapses:0};
+  if(grade==="again"){ p.reps=0; p.interval=0; p.lapses++; p.ease=Math.max(1.3,p.ease-0.2); }
+  else if(grade==="hard"){ p.interval=Math.max(1,Math.round((p.interval||1)*1.2)); p.ease=Math.max(1.3,p.ease-0.15); p.reps++; }
+  else if(grade==="good"){ p.interval = p.reps===0?1 : p.reps===1?3 : Math.round(p.interval*p.ease); p.reps++; }
+  else if(grade==="easy"){ p.interval = (p.reps===0?2 : Math.round(p.interval*p.ease*1.3)); p.ease+=0.15; p.reps++; }
+  p.due = grade==="again" ? today() : addDays(p.interval);
+  p.last = today();
+  prog[card.id] = p; store.write(prog);
+  return grade==="again"; // requeue this session?
+}
+
+function buildQueue(){
+  const t = today();
+  queue = cards.filter(c => { const p=prog[c.id]; return !p || !p.due || p.due <= t; });
+  doneCount = 0;
+}
+
+/* ---- tiny markdown: fenced code + inline code, everything escaped ---- */
+function esc(s){ return s.replace(/[&<>]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+function render(text){
+  const parts = text.split(/```/);
+  return parts.map((chunk,i)=>{
+    if(i%2===1){ return "<pre><code>"+esc(chunk.replace(/^\w*\n/,""))+"</code></pre>"; }
+    return esc(chunk).replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\n/g,"<br>");
+  }).join("");
+}
+
+/* ---- views ---- */
+const main = document.getElementById("main");
+function setBar(){
+  const total = doneCount + queue.length + (current?1:0);
+  document.getElementById("progbar").style.width = total ? (doneCount/total*100)+"%" : "0%";
+  const due = queue.length + (current?1:0);
+  document.getElementById("counts").innerHTML = `<b>${due}</b> due · <b>${doneCount}</b> done · ${cards.length} cards`;
+}
+
+function next(){
+  current = queue.shift() || null; shown = false;
+  if(!current){ return renderDone(); }
+  renderCard(); setBar();
+}
+
+function renderCard(){
+  const c = current;
+  main.innerHTML = `
+    <div class="card">
+      <div class="meta">
+        <span class="path">${c.path.join(" / ").toLowerCase()}</span>
+        <span class="chip ${c.type}">${c.type}</span>
+      </div>
+      <div class="q">${render(c.question)}</div>
+      <div id="ans"></div>
+      <div class="spacer"></div>
+      <div class="actions" id="actions">
+        <button class="reveal" id="reveal">Show answer</button>
+      </div>
+    </div>`;
+  document.getElementById("reveal").onclick = reveal;
+}
+
+function reveal(){
+  if(shown) return; shown = true;
+  document.getElementById("ans").innerHTML =
+    `<div class="a"><div class="label">answer</div>${render(current.answer)}</div>`;
+  document.getElementById("actions").innerHTML = `
+    <div class="grades">
+      <button class="grade g-again" data-g="again">Again<small>1</small></button>
+      <button class="grade g-hard"  data-g="hard">Hard<small>2</small></button>
+      <button class="grade g-good"  data-g="good">Good<small>3</small></button>
+      <button class="grade g-easy"  data-g="easy">Easy<small>4</small></button>
+    </div>`;
+  document.querySelectorAll(".grade").forEach(b=> b.onclick=()=>grade(b.dataset.g));
+}
+
+function grade(g){
+  if(!current || !shown) return;
+  const requeue = schedule(current, g);
+  if(requeue) queue.push(current); else doneCount++;
+  next();
+}
+
+function renderDone(){
+  setBar();
+  main.innerHTML = `
+    <div class="empty">
+      <h2>${doneCount ? "Done for now" : "Nothing due"}</h2>
+      <p>${doneCount ? `You reviewed ${doneCount} card${doneCount>1?"s":""}. Come back when more are due.` :
+        "No cards are due today. Load a different set, or export your progress to sync it to another device."}</p>
+    </div>`;
+}
+
+function renderStart(){
+  setBar();
+  main.innerHTML = `
+    <div class="empty">
+      <h2>Load your cards to start</h2>
+      <p>This reviewer holds no cards of its own. Point it at your <code>cards.json</code> file &mdash; that file is your source of truth.</p>
+      <p><button class="reveal" id="startLoad" style="max-width:220px;margin:.6rem auto 0">Load cards.json</button></p>
+    </div>`;
+  document.getElementById("startLoad").onclick = ()=> document.getElementById("loadCards").click();
+}
+
+/* ---- keyboard ---- */
+document.addEventListener("keydown", e=>{
+  if(!current) return;
+  if((e.key===" "||e.key==="Enter") && !shown){ e.preventDefault(); reveal(); }
+  else if(shown && ["1","2","3","4"].includes(e.key)){ grade(["again","hard","good","easy"][+e.key-1]); }
+});
+
+/* ---- toolbar ---- */
+document.getElementById("loadCards").onchange = e=>{
+  const f=e.target.files[0]; if(!f) return; const r=new FileReader();
+  r.onload = ()=>{ try{ const d=JSON.parse(r.result); cards = d.cards||d;
+    prog = store.read(); buildQueue(); next(); }catch(err){ alert("Couldn't read that file as JSON."); } };
+  r.readAsText(f);
+};
+document.getElementById("exportProg").onclick = ()=>{
+  const blob = new Blob([JSON.stringify(prog,null,2)], {type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="drill-progress.json"; a.click(); URL.revokeObjectURL(a.href);
+};
+document.getElementById("importProg").onchange = e=>{
+  const f=e.target.files[0]; if(!f) return; const r=new FileReader();
+  r.onload = ()=>{ try{ prog=JSON.parse(r.result); store.write(prog); buildQueue(); next(); }
+    catch(err){ alert("Couldn't read that progress file."); } };
+  r.readAsText(f);
+};
+
+/* ---- go ---- */
+if(cards.length){ buildQueue(); next(); } else { renderStart(); }
+</script>
+</body>
+</html>
