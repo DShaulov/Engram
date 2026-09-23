@@ -2718,5 +2718,197 @@
     "question": "What is the purpose of the graph's root node, and how is it treated during traversal?",
     "answer": "The root node points to all resources so the graph has a **single root**. When traversing the graph, the **root node is ignored**.",
     "tags": ["graph", "internals", "nodes"]
+  },
+  {
+    "id": "tf-341",
+    "path": ["DevOps", "Terraform", "Validation"],
+    "type": "concept",
+    "question": "What minimum Terraform version is required for: (1) input variable validation, (2) preconditions/postconditions, (3) `check` blocks?",
+    "answer": "(1) Input variable validation — v0.13.0+. (2) Preconditions and postconditions — v1.2.0+. (3) `check` blocks — v1.5.0+.",
+    "tags": ["validation", "versions"]
+  },
+  {
+    "id": "tf-342",
+    "path": ["DevOps", "Terraform", "Validation"],
+    "type": "concept",
+    "question": "Of the four validation mechanisms (variable validation, preconditions, postconditions, `check` blocks), which one does NOT block the operation on failure, and what does it do instead?",
+    "answer": "`check` blocks don't block. A failed `assert` inside a `check` block produces a warning with the `error_message`, and the plan/apply continues normally.",
+    "tags": ["validation", "check"]
+  },
+  {
+    "id": "tf-343",
+    "path": ["DevOps", "Terraform", "Validation"],
+    "type": "concept",
+    "question": "What's the conceptual difference between a `precondition` and a `postcondition`?",
+    "answer": "A precondition verifies an assumption about a value *before* Terraform creates/uses the resource, data source, or output. A postcondition verifies a guarantee about the result *after* Terraform has planned/applied the resource (or read the data source).",
+    "tags": ["precondition", "postcondition"]
+  },
+  {
+    "id": "tf-344",
+    "path": ["DevOps", "Terraform", "Validation"],
+    "type": "applied",
+    "question": "```hcl\nresource \"aws_instance\" \"example\" {\n  ami = data.aws_ami.example.id\n  lifecycle {\n    precondition {\n      condition     = data.aws_ami.example.architecture == \"x86_64\"\n      error_message = \"The selected AMI must be for the x86_64 architecture.\"\n    }\n  }\n}\n```\nIf the referenced AMI is `arm64`, what happens?",
+    "answer": "Terraform evaluates the precondition while building the plan (preconditions run before creating the resource) and, since it fails, throws an error with that `error_message` and stops the operation — the instance is never created. Precondition failures take precedence over provider argument errors.",
+    "tags": ["precondition", "applied"]
+  },
+  {
+    "id": "tf-345",
+    "path": ["DevOps", "Terraform", "Validation"],
+    "type": "concept",
+    "question": "What is the order in which Terraform executes: input variable validations, preconditions, postconditions, and `check` blocks?",
+    "answer": "1) Input variable validations — immediately, before generating a plan. 2) Preconditions — after generating the plan but before creating the resource/data source/output. 3) Postconditions — after planning and applying changes. 4) Checks — at the very end of plan and apply (and on scheduled HCP Terraform health assessments).",
+    "tags": ["validation", "order-of-operations"]
+  },
+  {
+    "id": "tf-346",
+    "path": ["DevOps", "Terraform", "Validation"],
+    "type": "concept",
+    "question": "When would you reach for a `check` block instead of a postcondition?",
+    "answer": "Use a `check` block to validate infrastructure dynamically against external or changing conditions without blocking operations — e.g. pinging an endpoint's health, or continuously validating a certificate. Postconditions are static guardrails tied to a specific resource/data source's create/apply/read; checks run last, after postconditions, and only warn on failure.",
+    "tags": ["check", "postcondition"]
+  },
+  {
+    "id": "tf-347",
+    "path": ["DevOps", "Terraform", "Validation"],
+    "type": "concept",
+    "question": "Is `error_message` optional or required for variable validation, preconditions, postconditions, and `check` assertions?",
+    "answer": "Required for all four. It must evaluate to a string (literals, heredocs, template expressions, or `format()` are all fine — useful for converting null/list/map values into a readable message). Multi-line messages are supported and Terraform won't wrap lines that start with whitespace.",
+    "tags": ["validation", "error_message"]
+  },
+  {
+    "id": "tf-348",
+    "path": ["DevOps", "Terraform", "Validation"],
+    "type": "applied",
+    "question": "```hcl\ndata \"aws_ami\" \"example\" {\n  id = var.aws_ami_id\n  lifecycle {\n    postcondition {\n      condition     = self.tags[\"Component\"] == \"nomad-server\"\n      error_message = \"tags[\\\"Component\\\"] must be \\\"nomad-server\\\".\"\n    }\n  }\n}\n```\nWhat does `self` refer to here, and when does this postcondition actually run?",
+    "answer": "`self` refers to the data source block it's attached to (`data.aws_ami.example`). Postconditions on a data source run after Terraform reads from that data source — so this fires right after the AMI lookup, before anything downstream uses the (wrong) AMI.",
+    "tags": ["postcondition", "applied"]
+  },
+  {
+    "id": "tf-349",
+    "path": ["DevOps", "Terraform", "Validation"],
+    "type": "concept",
+    "question": "Can `output` blocks have preconditions, and what are they for?",
+    "answer": "Yes — an `output` block can include a `precondition` to validate a module's output value before Terraform exposes it or writes it into state. Example: requiring a security group to allow at least one of ports 80/443 before exposing `instance_public_ip`.",
+    "tags": ["precondition", "output"]
+  },
+  {
+    "id": "tf-350",
+    "path": ["DevOps", "Terraform", "Validation"],
+    "type": "concept",
+    "question": "What is \"continuous validation\" in HCP Terraform?",
+    "answer": "If health checks are enabled on a workspace, HCP Terraform re-evaluates the workspace's `check` blocks, preconditions, and postconditions on an ongoing basis (not only during plan/apply) to catch drift — e.g. alerting when an API gateway certificate is about to expire.",
+    "tags": ["check", "hcp-terraform"]
+  },
+  {
+    "id": "tf-351",
+    "path": ["DevOps", "Terraform", "Validation"],
+    "type": "applied",
+    "question": "Why can't Terraform validate a postcondition that depends on an EC2 instance's root volume ID during the plan phase?",
+    "answer": "AWS only assigns the root volume ID once the instance actually starts, so its value is unknown at plan time. Terraform validates as early as it can: if a condition's value is known before apply, it validates during planning; if it's only known after apply, Terraform defers that check to the apply phase.",
+    "tags": ["postcondition", "applied", "order-of-operations"]
+  },
+  {
+    "id": "tf-352",
+    "path": ["DevOps", "Terraform", "Validation"],
+    "type": "concept",
+    "question": "During apply, how does a failed precondition differ from a failed postcondition in terms of what Terraform does to already-taken actions?",
+    "answer": "A failed precondition prevents Terraform from carrying out the planned action for that resource/data source/output at all — nothing happens for it. A failed postcondition halts further downstream processing that depends on that resource/data source, but does NOT undo actions Terraform already took.",
+    "tags": ["precondition", "postcondition", "order-of-operations"]
+  },
+    {
+    "id": "tf-353",
+    "path": ["DevOps", "Terraform", "Sensitive Data"],
+    "type": "concept",
+    "question": "Which Terraform version introduced the `sensitive` argument on `variable`/`output` blocks, and what protection does it actually provide?",
+    "answer": "Terraform 0.15+. It only redacts the value from CLI and HCP Terraform UI output — it does NOT prevent Terraform from storing the value in state and plan files (still plaintext there).",
+    "tags": ["sensitive", "state"]
+  },
+  {
+    "id": "tf-354",
+    "path": ["DevOps", "Terraform", "Sensitive Data"],
+    "type": "applied",
+    "question": "You run `terraform output -json` on an output marked `sensitive = true`. What happens?",
+    "answer": "The value is printed in plain text. The `-json` and `-raw` flags on `terraform output` bypass the `sensitive` redaction entirely.",
+    "tags": ["sensitive", "cli"]
+  },
+  {
+    "id": "tf-355",
+    "path": ["DevOps", "Terraform", "Sensitive Data"],
+    "type": "concept",
+    "question": "If a resource argument references a variable marked `sensitive = true` (e.g. `password = var.database_password`), what happens to that argument in plan/apply output?",
+    "answer": "Terraform automatically treats it as sensitive too and redacts it as `(sensitive value)` — sensitivity propagates through any expression that references a sensitive variable or output.",
+    "tags": ["sensitive", "propagation"]
+  },
+  {
+    "id": "tf-356",
+    "path": ["DevOps", "Terraform", "Sensitive Data"],
+    "type": "concept",
+    "question": "What Terraform version introduced the `ephemeral` argument, and what's fundamentally different about what it does compared to `sensitive`?",
+    "answer": "Terraform 1.10+. Unlike `sensitive` (which only hides output), `ephemeral` actually omits the value from state and plan files entirely — it is never persisted.",
+    "tags": ["ephemeral", "state"]
+  },
+  {
+    "id": "tf-357",
+    "path": ["DevOps", "Terraform", "Sensitive Data"],
+    "type": "applied",
+    "question": "You mark a variable `ephemeral = true` and use it to generate a value inside a resource, but never capture it elsewhere. After apply, can you retrieve that value later?",
+    "answer": "No. Terraform never stores ephemeral values in state or plan files, so any generated value you want to keep must be explicitly captured into another resource or output — otherwise it's gone once the run ends.",
+    "tags": ["ephemeral", "state"]
+  },
+  {
+    "id": "tf-358",
+    "path": ["DevOps", "Terraform", "Sensitive Data"],
+    "type": "concept",
+    "question": "Can you add `ephemeral = true` to an output block in the root module?",
+    "answer": "No — the `ephemeral` argument on outputs is only allowed on child module outputs, never on root module outputs.",
+    "tags": ["ephemeral", "modules"]
+  },
+  {
+    "id": "tf-359",
+    "path": ["DevOps", "Terraform", "Sensitive Data"],
+    "type": "concept",
+    "question": "What do you get by setting both `sensitive = true` and `ephemeral = true` on a variable?",
+    "answer": "Both benefits at once: the value is redacted from CLI/UI output AND omitted from state and plan files entirely.",
+    "tags": ["sensitive", "ephemeral"]
+  },
+  {
+    "id": "tf-360",
+    "path": ["DevOps", "Terraform", "Sensitive Data"],
+    "type": "concept",
+    "question": "List the contexts where an ephemeral value can legally be referenced in Terraform configuration.",
+    "answer": "`locals` blocks; `variable` blocks with `ephemeral = true`; child module `output` blocks with `ephemeral = true`; write-only arguments on managed resources; `ephemeral` blocks; `provider` blocks; `provisioner` and `connection` blocks.",
+    "tags": ["ephemeral", "syntax"]
+  },
+  {
+    "id": "tf-361",
+    "path": ["DevOps", "Terraform", "Sensitive Data"],
+    "type": "concept",
+    "question": "What version of Terraform introduced write-only arguments, and what's the naming convention for them?",
+    "answer": "Terraform 1.11+. Write-only arguments end in `_wo` and are paired with a corresponding `_wo_version` argument, e.g. `password_wo` / `password_wo_version`.",
+    "tags": ["write-only"]
+  },
+  {
+    "id": "tf-362",
+    "path": ["DevOps", "Terraform", "Sensitive Data"],
+    "type": "applied",
+    "question": "```hcl\nresource \"aws_db_instance\" \"example\" {\n  password_wo         = ephemeral.random_password.db_password.result\n  password_wo_version = 1\n}\n```\nWhat does bumping `password_wo_version` do, and is `password_wo`'s value stored anywhere after apply?",
+    "answer": "Bumping the version signals Terraform to re-send the write-only value to the provider (forcing re-application). The value itself is never stored in state or plan files — the provider uses it during the operation and Terraform discards it.",
+    "tags": ["write-only", "applied"]
+  },
+  {
+    "id": "tf-363",
+    "path": ["DevOps", "Terraform", "Sensitive Data"],
+    "type": "concept",
+    "question": "What does the `ephemeral` block do, and how does it typically get used with write-only arguments?",
+    "answer": "It declares a temporary, provider-defined ephemeral resource (e.g. `random_password`) that exists only for the current operation and is never stored. Its result is commonly piped into a write-only argument on a managed resource so the value is used but never persisted.",
+    "tags": ["ephemeral", "write-only"]
+  },
+  {
+    "id": "tf-364",
+    "path": ["DevOps", "Terraform", "Sensitive Data"],
+    "type": "concept",
+    "question": "Besides `sensitive`/`ephemeral`, what four state security best practices does HashiCorp recommend when sensitive values end up in state?",
+    "answer": "Store state remotely, encrypt it at rest, use access controls to limit who can access it, and use audit logs to track state access over time.",
+    "tags": ["state", "security"]
   }
 ]
