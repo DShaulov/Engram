@@ -2910,5 +2910,133 @@
     "question": "Besides `sensitive`/`ephemeral`, what four state security best practices does HashiCorp recommend when sensitive values end up in state?",
     "answer": "Store state remotely, encrypt it at rest, use access controls to limit who can access it, and use audit logs to track state access over time.",
     "tags": ["state", "security"]
+  },
+  {
+    "id": "tf-365",
+    "path": ["DevOps", "Terraform", "Core Workflow", "Apply"],
+    "type": "concept",
+    "question": "When you run `terraform apply -target=aws_instance.web`, which resources does Terraform include in the plan, and when is `-target` appropriate?",
+    "answer": "The targeted resource **plus the resources it depends on** (its upstream dependencies). Resources that depend *on* the target (its dependents) are NOT included.\n\n`-target` is meant for exceptional situations (recovering from an error, an urgent fix), not routine use. Terraform prints a warning because a targeted run can leave state and configuration out of step.",
+    "tags": ["target", "dependencies"]
+  },
+  {
+    "id": "tf-366",
+    "path": ["DevOps", "Terraform", "Core Workflow", "Apply"],
+    "type": "applied",
+    "question": "Which resources are included in the plan for this command?\n```hcl\nresource \"aws_subnet\" \"main\" {\n  # ...\n}\n\nresource \"aws_instance\" \"web\" {\n  subnet_id = aws_subnet.main.id\n}\n\nresource \"aws_eip\" \"ip\" {\n  instance = aws_instance.web.id\n}\n```\n```bash\nterraform apply -target=aws_instance.web\n```",
+    "answer": "`aws_instance.web` and `aws_subnet.main`.\n\n`aws_subnet.main` is included because the instance depends on it (upstream). `aws_eip.ip` is excluded: it depends on the target, so it is a dependent, and `-target` only pulls in dependencies.",
+    "tags": ["target", "dependencies"]
+  },
+  {
+    "id": "tf-367",
+    "path": ["DevOps", "Terraform", "Configuration", "Meta-Arguments"],
+    "type": "concept",
+    "question": "What argument types does `for_each` accept, and what happens if you pass a plain list of strings?",
+    "answer": "`for_each` accepts a **map** or a **set of strings**. A list (even `list(string)`) causes an error at plan time, because `for_each` needs unique keys to build instance addresses like `aws_s3_bucket.b[\"logs\"]`.\n\nFix: convert the list with `toset(...)`.",
+    "tags": ["sets", "maps"]
+  },
+  {
+    "id": "tf-368",
+    "path": ["DevOps", "Terraform", "Configuration", "Meta-Arguments"],
+    "type": "applied",
+    "question": "Will `terraform plan` succeed on this configuration? If not, what is the fix?\n```hcl\nvariable \"names\" {\n  type    = list(string)\n  default = [\"logs\", \"assets\"]\n}\n\nresource \"aws_s3_bucket\" \"b\" {\n  for_each = var.names\n  bucket   = \"acme-${each.value}\"\n}\n```",
+    "answer": "No. It errors because `for_each` does not accept a list.\n\nFix: `for_each = toset(var.names)`. For a set of strings, `each.key` and `each.value` are the same string, and the instances are addressed as `aws_s3_bucket.b[\"logs\"]` and `aws_s3_bucket.b[\"assets\"]`.",
+    "tags": ["sets", "s3", "expressions"]
+  },
+  {
+    "id": "tf-369",
+    "path": ["DevOps", "Terraform", "Configuration", "Variables"],
+    "type": "concept",
+    "question": "List the sources of input variable values from lowest to highest precedence.",
+    "answer": "Lowest to highest (later wins):\n1. `default` in the `variable` block (fallback)\n2. Environment variables `TF_VAR_name`\n3. `terraform.tfvars`\n4. `terraform.tfvars.json`\n5. `*.auto.tfvars` / `*.auto.tfvars.json`\n6. `-var` and `-var-file` on the command line\n\nCommon trap: environment variables sit near the bottom, not the top.",
+    "tags": ["precedence", "tfvars"]
+  },
+  {
+    "id": "tf-370",
+    "path": ["DevOps", "Terraform", "Configuration", "Variables"],
+    "type": "applied",
+    "question": "A variable `region` is set in four places:\n- `TF_VAR_region=\"eu-west-1\"` in the environment\n- `region = \"us-east-1\"` in `terraform.tfvars`\n- `region = \"ap-south-1\"` in `dev.auto.tfvars`\n- `default = \"us-west-2\"` in the variable block\n\nWhich value does `terraform plan` (no flags) use? What changes if you add `-var=\"region=sa-east-1\"`?",
+    "answer": "`ap-south-1`. `*.auto.tfvars` outranks `terraform.tfvars`, the environment variable, and the default.\n\nWith `-var=\"region=sa-east-1\"` added, `sa-east-1` wins, since command-line `-var` / `-var-file` is the highest-precedence source.",
+    "tags": ["precedence", "tfvars"]
+  },
+  {
+    "id": "tf-371",
+    "path": ["DevOps", "Terraform", "Configuration", "Variables"],
+    "type": "concept",
+    "question": "How does Terraform resolve conflicts among (a) multiple `*.auto.tfvars` files and (b) multiple `-var` / `-var-file` options?",
+    "answer": "(a) `*.auto.tfvars` (and `.auto.tfvars.json`) files are loaded in **lexical order of filename**, so a later filename overrides an earlier one.\n\n(b) `-var` and `-var-file` options are processed **in the order given on the command line**, so a later option overrides an earlier one.",
+    "tags": ["precedence", "tfvars", "cli"]
+  },
+  {
+    "id": "tf-372",
+    "path": ["DevOps", "Terraform", "Configuration", "Sensitive Data"],
+    "type": "applied",
+    "question": "What happens on `terraform plan`, and how do you fix it?\n```hcl\nvariable \"db_password\" {\n  type      = string\n  sensitive = true\n}\n\noutput \"connection_string\" {\n  value = \"postgres://admin:${var.db_password}@db.example.com\"\n}\n```",
+    "answer": "Terraform **errors**: the output derives from a sensitive value but is not marked sensitive. Interpolating a sensitive value into a string keeps it sensitive, and Terraform forces you to acknowledge that so you don't expose it by accident.\n\nFix: add `sensitive = true` to the output block.",
+    "tags": ["outputs", "variables"]
+  },
+  {
+    "id": "tf-373",
+    "path": ["DevOps", "Terraform", "Configuration", "Sensitive Data"],
+    "type": "concept",
+    "question": "What does `sensitive = true` on a variable or output actually protect, and what does it NOT protect?",
+    "answer": "It **redacts the value in CLI output** (plan/apply/`terraform output`) and in the HCP Terraform UI.\n\nIt does **not** encrypt or hide the value in the state file (or plan file): it is stored in plain text there, and `terraform output -json` still reveals it. Protect state with a secured remote backend and access control, or keep the secret out of state entirely with ephemeral values.",
+    "tags": ["state", "security", "outputs"]
+  },
+  {
+    "id": "tf-374",
+    "path": ["DevOps", "Terraform", "Configuration", "Functions"],
+    "type": "applied",
+    "question": "What do these two expressions evaluate to?\n```hcl\nelement([\"a\", \"b\", \"c\"], 4)\n[\"a\", \"b\", \"c\"][4]\n```",
+    "answer": "The first returns `\"b\"`: `element()` **wraps around** (index modulo list length, 4 mod 3 = 1). The second is an **error** (index out of range).\n\nThe wrap-around makes `element()` handy for round-robin placement, e.g. spreading `count` instances across a shorter list of subnets or AZs.",
+    "tags": ["lists", "count", "expressions"]
+  },
+  {
+    "id": "tf-375",
+    "path": ["DevOps", "Terraform", "Configuration", "Expressions"],
+    "type": "applied",
+    "question": "What does this expression evaluate to?\n```hcl\n{ for k, v in { a = 1, b = 2, c = 3 } : k => v * 2 if v != 2 }\n```",
+    "answer": "`{ a = 2, c = 6 }`\n\nThe `if` clause filters the *input* elements: `b` (where `v == 2`) is dropped. The remaining values are doubled and returned under their original keys.",
+    "tags": ["for", "maps"]
+  },
+  {
+    "id": "tf-376",
+    "path": ["DevOps", "Terraform", "Configuration", "Expressions"],
+    "type": "concept",
+    "question": "What decides whether a `for` expression returns a tuple or an object, and what does the optional `if` clause do?",
+    "answer": "The **enclosing brackets** decide: `[for ...]` produces a tuple (list-like), and `{for k, v in ... : key => value}` produces an object (map-like) and requires the `=>` form.\n\nThe optional trailing `if` condition **filters** input elements: only those where it is true contribute to the result.",
+    "tags": ["for", "lists", "maps"]
+  },
+  {
+    "id": "tf-377",
+    "path": ["DevOps", "Terraform", "Configuration", "Sensitive Data"],
+    "type": "concept",
+    "question": "What is an ephemeral value in Terraform (1.10+) and what is its key guarantee?",
+    "answer": "A value that exists only while a run is in progress and is **never persisted to the plan or state file**.\n\nEphemeral values can come from variables declared with `ephemeral = true`, `ephemeral` resources, and ephemeral outputs (child modules). They can only be used in contexts that don't persist them, such as write-only arguments; using one in a normal resource argument is an error.",
+    "tags": ["ephemeral", "state", "security"]
+  },
+  {
+    "id": "tf-378",
+    "path": ["DevOps", "Terraform", "Configuration", "Sensitive Data"],
+    "type": "concept",
+    "question": "What is a write-only argument (e.g. `password_wo`), and how does it relate to ephemeral values?",
+    "answer": "A resource argument (Terraform 1.11+) whose value is sent to the provider during apply but **never stored in the plan or state**. Unlike normal arguments, it can accept ephemeral values.\n\nBecause nothing is stored, Terraform can't detect changes to it; providers typically add a companion version argument (e.g. `password_wo_version`) that you change to trigger an update.",
+    "tags": ["ephemeral", "state", "security"]
+  },
+  {
+    "id": "tf-379",
+    "path": ["DevOps", "Terraform", "Configuration", "Sensitive Data"],
+    "type": "concept",
+    "question": "How does an `ephemeral` resource block differ from a `data` block, and why does that matter for secrets?",
+    "answer": "A `data` source's result is **saved in state** (even if marked sensitive). An `ephemeral` resource is opened and closed within a single run and its result is **never written to state or plan**.\n\nFetching a secret via an ephemeral resource (e.g. a secrets-manager or Vault ephemeral resource) instead of a data source avoids persisting it. The provider must support ephemeral resources.",
+    "tags": ["ephemeral", "data", "vault", "state"]
+  },
+  {
+    "id": "tf-380",
+    "path": ["DevOps", "Terraform", "Configuration", "Sensitive Data"],
+    "type": "concept",
+    "question": "A team wants a database password never persisted in state or plan files. Evaluate each: (a) `sensitive = true` on the variable, (b) a Vault `data` source, (c) ephemeral value + write-only argument, (d) `nonsensitive()`.",
+    "answer": "Only **(c)** works.\n\n(a) only masks display; the value is still stored in plain text in state.\n(b) a data source's result is written to state.\n(d) `nonsensitive()` removes the sensitive marking, the opposite of protection.\n\nEphemeral values plus write-only arguments are the mechanism that keeps secrets out of both state and plan.",
+    "tags": ["ephemeral", "sensitive", "vault", "state"]
   }
 ]
