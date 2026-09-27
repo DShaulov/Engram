@@ -3046,5 +3046,13 @@
   "question": "When both `-var` and `-var-file` are passed on the command line, which one wins if `-var-file` comes after `-var`?",
   "answer": "Command-line arguments aren't a single precedence tier — they're resolved left-to-right among themselves, later wins. So `-var=\"x=1\" -var-file=f.tfvars` (with f.tfvars setting x=2) results in x=2, because -var-file was given after -var. (Full precedence, lowest to highest: env vars → terraform.tfvars → *.auto.tfvars alphabetically → -var/-var-file in the order given.)",
   "tags": ["variables", "precedence", "cli"]
+  },
+  {
+  "id": "tf-382",
+  "path": ["DevOps", "Terraform", "Variables"],
+  "type": "concept",
+  "question": "How do `terraform.tfvars` and `*.auto.tfvars` files differ in naming, count, and load order?",
+  "answer": "`terraform.tfvars` is exactly one file with that fixed name. `*.auto.tfvars` matches any number of files (e.g. `network.auto.tfvars`, `db.auto.tfvars`), loaded alphabetically. Both load automatically without a `-var-file` flag, but `terraform.tfvars` loads first — so `*.auto.tfvars` files override it for the same variable.",
+  "tags": ["variables", "precedence", "tfvars"]
   }
 ]
