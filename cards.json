@@ -3110,5 +3110,101 @@
     "question": "Before using a registry module, what should you check besides the source and provider?",
     "answer": "Whether the module has required input variables that must be set — some modules won't work until required inputs are provided.",
     "tags": ["modules", "inputs"]
+  },
+  {
+    "id": "tf-390",
+    "path": ["DevOps", "Terraform", "Modules", "Source"],
+    "type": "concept",
+    "question": "When is the `version` argument valid on a `module` block, and why can't a local-path module use it?",
+    "answer": "Only when `source` points to a registry-hosted module (public Terraform Registry, HCP Terraform, or Terraform Enterprise private registry). Local-path modules can't use `version` because they're loaded from the same source tree as the caller and always share the caller's version — there's no separate version to pin.",
+    "tags": ["source", "version"]
+  },
+  {
+    "id": "tf-391",
+    "path": ["DevOps", "Terraform", "Modules", "Meta-arguments"],
+    "type": "concept",
+    "question": "Why can't `count` and `for_each` be used on the same module block, and how do you choose between them?",
+    "answer": "Both are mechanisms for creating multiple instances of the same module, and Terraform requires exactly one indexing scheme per block. Use `count` for nearly identical instances indexed by number (`count.index`); use `for_each` when instances need varying configuration, keyed by a map or set of strings (`each.key`/`each.value`).",
+    "tags": ["count", "for_each", "meta-arguments"]
+  },
+  {
+    "id": "tf-392",
+    "path": ["DevOps", "Terraform", "Modules", "Source"],
+    "type": "applied",
+    "question": "What's wrong with this module source?\n```hcl\nmodule \"vpc\" {\n  source = \"git::https://example.com/vpc.git?depth=1&ref=51d462976d84fdea54b47d80dcabbf680badcdb8\"\n}\n```",
+    "answer": "Setting `depth` forces Terraform to pass `ref` to `git clone --branch`, which only accepts a branch or tag name — not a raw commit SHA. Since `ref` here is a full commit hash, the clone will fail. Either drop `depth` or point `ref` at a named branch/tag.",
+    "tags": ["git", "depth", "ref"]
+  },
+  {
+    "id": "tf-393",
+    "path": ["DevOps", "Terraform", "Modules", "Source"],
+    "type": "concept",
+    "question": "How do you point a module `source` at a subdirectory inside a package (registry, Git repo, archive), and where do query parameters like `ref` go relative to that?",
+    "answer": "Append `//` followed by the subdirectory path, e.g. `hashicorp/consul/aws//modules/consul-cluster`. Query parameters such as `ref` go *after* the subdirectory segment, e.g. `git::https://example.com/network.git//modules/vpc?ref=v1.2.0`.",
+    "tags": ["source", "subdirectory"]
+  },
+  {
+    "id": "tf-394",
+    "path": ["DevOps", "Terraform", "Modules", "Source"],
+    "type": "concept",
+    "question": "Can two `module` blocks share the exact same `source` value? What has to be true if so?",
+    "answer": "Yes. Each block just needs a unique label, letting you create separate, independently configured sets of resources from the same module code.",
+    "tags": ["source", "labels"]
+  },
+  {
+    "id": "tf-395",
+    "path": ["DevOps", "Terraform", "Modules", "Meta-arguments"],
+    "type": "concept",
+    "question": "What does the `depends_on` meta-argument force Terraform to do on a module block, and when do you actually need it?",
+    "answer": "It forces Terraform to fully complete all operations on the referenced upstream resource(s) before performing any operation on the module. Needed when a dependency exists that Terraform can't infer from expression references inside the module's config (e.g. an IAM policy's real-world effect isn't visible as an attribute reference).",
+    "tags": ["depends_on", "meta-arguments"]
+  },
+  {
+    "id": "tf-396",
+    "path": ["DevOps", "Terraform", "Modules", "Meta-arguments"],
+    "type": "concept",
+    "question": "What problem does the `providers` meta-argument on a module block solve?",
+    "answer": "It maps a provider name as referenced inside the child module to a specific — possibly aliased — provider configuration declared in the parent/root module, e.g. `providers = { aws.src = aws.usw1 }`. This is how you pass a non-default provider alias into a module.",
+    "tags": ["providers", "meta-arguments"]
+  },
+  {
+    "id": "tf-397",
+    "path": ["DevOps", "Terraform", "Modules", "Source"],
+    "type": "concept",
+    "question": "What's the hostname gotcha for an S3-bucket module source in AWS's us-east-1 region?",
+    "answer": "Buckets in us-east-1 must be addressed as `s3.amazonaws.com`, not the regional-style `s3-us-east-1.amazonaws.com`.",
+    "tags": ["s3", "source"]
+  },
+  {
+    "id": "tf-398",
+    "path": ["DevOps", "Terraform", "Modules", "Source"],
+    "type": "concept",
+    "question": "In what order does Terraform's module installer check for AWS credentials when sourcing a module from S3?",
+    "answer": "1) `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` or `AWS_PROFILE` env vars, 2) the shared credentials file `~/.aws/credentials`, 3) the shared config file `~/.aws/config` (incl. SSO/assume-role), 4) container or EC2 instance-profile credentials (IMDS).",
+    "tags": ["s3", "aws", "credentials"]
+  },
+  {
+    "id": "tf-399",
+    "path": ["DevOps", "Terraform", "Modules", "Source"],
+    "type": "concept",
+    "question": "How does Terraform resolve the real module source address from a plain HTTPS URL, and what's the one case where it skips that logic entirely?",
+    "answer": "It appends `terraform-get=1` to the GET request, then looks for the module address in either an `X-Terraform-Get` response header or a `<meta name=\"terraform-get\" content=\"...\">` tag in an HTML response. Exception: if the URL ends in a recognized archive extension (`.zip`, `.gz`/`.tgz`/`.tar.gz`, `.bz2`/`.tbz2`/`.tar.bz2`, `.xz`/`.txz`/`.tar.xz`), Terraform skips the redirect lookup and treats the archive itself as the module source.",
+    "tags": ["http", "source"]
+  },
+  {
+    "id": "tf-400",
+    "path": ["DevOps", "Terraform", "Modules", "Source"],
+    "type": "concept",
+    "question": "When running in HCP Terraform or Terraform Enterprise, what's the required authentication method for Git-based module sources?",
+    "answer": "SSH keys only — username/password (HTTP-style) authentication to Git repos isn't supported in that environment.",
+    "tags": ["git", "hcp-terraform", "auth"]
+  },
+  {
+    "id": "tf-401",
+    "path": ["DevOps", "Terraform", "Modules", "Source"],
+    "type": "concept",
+    "question": "What does the `localterraform.com` hostname do when used in a module `source`?",
+    "answer": "It's a generic hostname usable in HCP Terraform/Terraform Enterprise source addresses that always resolves to modules hosted on the instance Terraform is currently running on.",
+    "tags": ["registry", "hcp-terraform"]
   }
 ]
