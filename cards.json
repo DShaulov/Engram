@@ -3054,5 +3054,61 @@
   "question": "How do `terraform.tfvars` and `*.auto.tfvars` files differ in naming, count, and load order?",
   "answer": "`terraform.tfvars` is exactly one file with that fixed name. `*.auto.tfvars` matches any number of files (e.g. `network.auto.tfvars`, `db.auto.tfvars`), loaded alphabetically. Both load automatically without a `-var-file` flag, but `terraform.tfvars` loads first — so `*.auto.tfvars` files override it for the same variable.",
   "tags": ["variables", "precedence", "tfvars"]
+  },
+  {
+    "id": "tf-383",
+    "path": ["DevOps", "Terraform", "Modules", "Registry"],
+    "type": "concept",
+    "question": "What is the source string format for a module from the public Terraform Registry?",
+    "answer": "`<NAMESPACE>/<NAME>/<PROVIDER>`, e.g. `hashicorp/consul/aws`. Three slash-separated segments, no hostname.",
+    "tags": ["modules", "registry"]
+  },
+  {
+    "id": "tf-384",
+    "path": ["DevOps", "Terraform", "Modules", "Registry"],
+    "type": "concept",
+    "question": "What is the source string format for a module from a private registry (e.g. HCP Terraform's)?",
+    "answer": "`<HOSTNAME>/<NAMESPACE>/<NAME>/<PROVIDER>`, e.g. `app.terraform.io/example_corp/vpc/aws`. Same as the public format but with an added hostname prefix (four segments instead of three).",
+    "tags": ["modules", "registry"]
+  },
+  {
+    "id": "tf-385",
+    "path": ["DevOps", "Terraform", "Modules", "Registry"],
+    "type": "applied",
+    "question": "Given `source = \"example_corp/vpc/aws\"` vs `source = \"app.terraform.io/example_corp/vpc/aws\"`, which is the public registry module and which is private?",
+    "answer": "`example_corp/vpc/aws` (3 segments) is a public registry module. `app.terraform.io/example_corp/vpc/aws` (4 segments, hostname first) is a private registry module.",
+    "tags": ["modules", "registry"]
+  },
+  {
+    "id": "tf-386",
+    "path": ["DevOps", "Terraform", "Modules", "Registry"],
+    "type": "concept",
+    "question": "What Terraform command actually downloads and caches modules referenced in a configuration?",
+    "answer": "`terraform init`. Modules aren't fetched just by being referenced in code — `init` is what pulls them down.",
+    "tags": ["modules", "cli"]
+  },
+  {
+    "id": "tf-387",
+    "path": ["DevOps", "Terraform", "Modules", "Registry"],
+    "type": "concept",
+    "question": "What fields does the Terraform Registry search match against when you search for a module?",
+    "answer": "Module name, provider, and description.",
+    "tags": ["modules", "registry"]
+  },
+  {
+    "id": "tf-388",
+    "path": ["DevOps", "Terraform", "Modules", "Registry"],
+    "type": "concept",
+    "question": "What are Partner modules in the Terraform Registry, and how do you filter for them?",
+    "answer": "Modules reviewed by HashiCorp to ensure stability and compatibility. On the registry search results page, check the \"Partner\" filter to see only those.",
+    "tags": ["modules", "registry"]
+  },
+  {
+    "id": "tf-389",
+    "path": ["DevOps", "Terraform", "Modules", "Registry"],
+    "type": "concept",
+    "question": "Before using a registry module, what should you check besides the source and provider?",
+    "answer": "Whether the module has required input variables that must be set — some modules won't work until required inputs are provided.",
+    "tags": ["modules", "inputs"]
   }
 ]
