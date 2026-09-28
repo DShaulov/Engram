@@ -3326,5 +3326,77 @@
     "question": "What are the key benefits of a data-only module, and how can you make it easy to swap with a module that manages the same infrastructure?",
     "answer": "The source of the information can change over time without updating every configuration that depends on it. If the data-only module exposes a similar set of outputs as a corresponding management module, you can swap between the two relatively easily when refactoring.",
     "tags": ["modules", "data-only-modules", "refactoring"]
+  },
+  {
+    "id": "tf-417",
+    "path": ["DevOps", "Terraform", "Modules"],
+    "type": "concept",
+    "question": "How does Terraform choose which module version to use when `version` is set on a `module` block?",
+    "answer": "It uses the newest *installed* version that satisfies the constraint. If no installed version qualifies, it downloads the newest version that does. `version` takes a standard version constraint string, e.g. `\"~> 1.2\"` or `\">= 0.10.0\"`.",
+    "tags": ["version-constraints", "init"]
+  },
+  {
+    "id": "tf-418",
+    "path": ["DevOps", "Terraform", "Modules"],
+    "type": "concept",
+    "question": "Which module sources support the `version` argument?",
+    "answer": "Only modules installed from a registry: the public Terraform Registry, an HCP Terraform private registry, a Terraform Enterprise private registry, or a custom service implementing the module registry protocol. That protocol has full support for module versioning; other source types (local paths, Git, S3, HTTP...) don't use `version`.",
+    "tags": ["version-constraints", "registry"]
+  },
+  {
+    "id": "tf-419",
+    "path": ["DevOps", "Terraform", "Modules"],
+    "type": "concept",
+    "question": "Why does `version` not apply to a module loaded from a local path like `./consul`?",
+    "answer": "A local-path module is loaded from the same source repository as its caller, so it always shares the caller's version. There is no separately published version to pin.",
+    "tags": ["version-constraints", "local-path"]
+  },
+  {
+    "id": "tf-420",
+    "path": ["DevOps", "Terraform", "Modules"],
+    "type": "applied",
+    "question": "What's wrong with this block, and how should the module be pinned instead?\n```hcl\nmodule \"vpc\" {\n  source  = \"git::https://example.com/vpc.git\"\n  version = \"1.2.0\"\n}\n```",
+    "answer": "`version` only applies to registry modules, so it isn't valid on a Git source. Pin through the source URL's `ref` query parameter instead:\n```hcl\nsource = \"git::https://example.com/vpc.git?ref=v1.2.0\"\n```\n`ref` accepts a tag, branch name, or commit SHA.",
+    "tags": ["version-constraints", "git"]
+  },
+  {
+    "id": "tf-421",
+    "path": ["DevOps", "Terraform", "Modules"],
+    "type": "concept",
+    "question": "Compare how you pin a module's version for a registry source versus a Git source.",
+    "answer": "Registry: a separate `version` argument holding a constraint, next to a plain `source` like `hashicorp/consul/aws`.\nGit: no `version` argument. Append `?ref=<tag|branch|SHA>` to the `source` string. If you also use a `//subdirectory`, the query parameter goes after it, e.g. `git::https://example.com/network.git//modules/vpc?ref=v1.2.0`.",
+    "tags": ["version-constraints", "registry", "git"]
+  },
+  {
+    "id": "tf-422",
+    "path": ["DevOps", "Terraform", "Modules"],
+    "type": "concept",
+    "question": "What happens if you omit `version` on a registry module, and what does HashiCorp recommend?",
+    "answer": "It defaults to the latest version available from the source. HashiCorp recommends explicitly constraining the acceptable versions so a new upstream release can't change your infrastructure unexpectedly.",
+    "tags": ["version-constraints", "registry"]
+  },
+  {
+    "id": "tf-423",
+    "path": ["DevOps", "Terraform", "Modules"],
+    "type": "concept",
+    "question": "You edit the `version` argument of a `module` block. What must you run before Terraform uses the new module code, and why?",
+    "answer": "Run `terraform init`. Terraform installs module code locally during init, so it has to run again to update that local code. The same applies after changing `source`.",
+    "tags": ["init", "version-constraints"]
+  },
+  {
+    "id": "tf-424",
+    "path": ["DevOps", "Terraform", "Modules"],
+    "type": "applied",
+    "question": "What versions does this permit, why is that risky, and how would you tighten it?\n```hcl\nmodule \"consul\" {\n  source  = \"hashicorp/consul/aws\"\n  version = \">= 0.10.0\"\n  servers = 3\n}\n```",
+    "answer": "It permits any version 0.10.0 or newer, with no upper bound. Terraform uses the newest installed version that fits, or downloads the newest available one, so a future breaking major release can be pulled in on a fresh `init` (the lock file tracks providers, not modules).\nTighten it with a pessimistic constraint: `~> 0.10.0` (patch releases only), `~> 0.10` (any 0.x from 0.10 up), or an exact pin like `\"0.10.0\"`.",
+    "tags": ["version-constraints", "registry"]
+  },
+  {
+    "id": "tf-425",
+    "path": ["DevOps", "Terraform", "Modules"],
+    "type": "applied",
+    "question": "Which of these blocks may legally use `version`?\n```hcl\nmodule \"a\" {\n  source  = \"hashicorp/consul/aws\"\n  version = \"0.1.0\"\n}\nmodule \"b\" {\n  source  = \"app.terraform.io/example-corp/k8s-cluster/azurerm\"\n  version = \"1.1.0\"\n}\nmodule \"c\" {\n  source  = \"s3::https://s3-eu-west-1.amazonaws.com/examplecorp-terraform-modules/vpc.zip\"\n  version = \"1.0.0\"\n}\n```",
+    "answer": "`a` and `b`. Both come from registries: the public Terraform Registry and an HCP Terraform private registry (the `app.terraform.io` prefix). `c` is an archive in an S3 bucket, not a registry, so `version` doesn't apply; you'd pin it by pointing `source` at a specific archive object.",
+    "tags": ["version-constraints", "registry", "s3"]
   }
 ]
