@@ -3206,5 +3206,125 @@
     "question": "What does the `localterraform.com` hostname do when used in a module `source`?",
     "answer": "It's a generic hostname usable in HCP Terraform/Terraform Enterprise source addresses that always resolves to modules hosted on the instance Terraform is currently running on.",
     "tags": ["registry", "hcp-terraform"]
+  },
+  {
+    "id": "tf-402",
+    "path": ["DevOps", "Terraform", "Modules", "Composition"],
+    "type": "concept",
+    "question": "What is the difference between a flat and a hierarchical Terraform configuration, and what tree shape does the module composition guidance recommend?",
+    "answer": "Flat: only a root module with resources, relationships described with expressions. Adding `module` blocks makes it hierarchical: each module has its own resources and possibly child modules, which can grow into a deep, complex tree. Recommendation: keep the module tree flat, with only one level of child modules, and connect modules with expressions (e.g. `module.network.vpc_id`).",
+    "tags": ["modules", "composition"]
+  },
+  {
+    "id": "tf-403",
+    "path": ["DevOps", "Terraform", "Modules", "Composition"],
+    "type": "concept",
+    "question": "What is module composition, and how does it differ from a module embedding its dependencies?",
+    "answer": "Composition is the flat style of assembling multiple composable building-block modules into a larger system. With embedding, a module creates and manages its own copy of its dependencies. With composition, the module *receives* its dependencies from the root module, which can therefore connect the same modules in different ways to get different results.",
+    "tags": ["modules", "composition"]
+  },
+  {
+    "id": "tf-404",
+    "path": ["DevOps", "Terraform", "Modules", "Composition"],
+    "type": "concept",
+    "question": "Why is it preferable for a `consul_cluster` module to accept a VPC ID and subnet IDs as arguments rather than create its own network?",
+    "answer": "This is dependency inversion. Modules stay small, and the cluster can coexist with other infrastructure in the same network (a module that creates its own network makes that hard). It also helps future refactoring: the module doesn't know or care how the identifiers are obtained by the caller.",
+    "tags": ["modules", "dependency-inversion"]
+  },
+  {
+    "id": "tf-405",
+    "path": ["DevOps", "Terraform", "Modules", "Composition"],
+    "type": "applied",
+    "question": "A `consul_cluster` module takes `vpc_id` and `subnet_ids`. The caller currently passes `module.network.vpc_id` and `module.network.subnet_ids`. The network is later split into its own configuration and the caller switches to:\n```hcl\nmodule \"consul_cluster\" {\n  source     = \"./modules/aws-consul-cluster\"\n  vpc_id     = data.aws_vpc.main.id\n  subnet_ids = data.aws_subnet_ids.main.ids\n}\n```\nWhat has to change inside the `consul_cluster` module?",
+    "answer": "Nothing. The module only declares that it needs those identifiers and doesn't care where they come from. Only the caller's arguments change, now fed from data sources instead of another module. That is the flexibility dependency inversion buys.",
+    "tags": ["modules", "dependency-inversion", "data-sources"]
+  },
+  {
+    "id": "tf-406",
+    "path": ["DevOps", "Terraform", "Modules", "Composition"],
+    "type": "concept",
+    "question": "A module is used in several environments, and a needed object already exists in some but must be created in others. What approach does the page recommend, and what does it advise against?",
+    "answer": "Advised against: a module that detects whether the object exists and creates it if not. Recommended: apply dependency inversion, so the module accepts the object as an input variable and the caller decides whether to create it (a resource) or look it up (a data source). This matches Terraform's declarative style (state what should already exist vs. what Terraform manages) and lets a reader understand intent without inspecting remote state.",
+    "tags": ["modules", "dependency-inversion", "conditional-creation"]
+  },
+  {
+    "id": "tf-407",
+    "path": ["DevOps", "Terraform", "Modules", "Composition"],
+    "type": "applied",
+    "question": "```hcl\nvariable \"ami\" {\n  type = object({\n    id           = string\n    architecture = string\n  })\n}\n```\nOne environment passes `ami = aws_ami_copy.example` (a resource) and another passes `ami = data.aws_ami.example` (a data source). Both are accepted. Why?",
+    "answer": "An `object` type constraint requires at least the listed attributes; extra attributes are accepted (and discarded inside the module). Both the resource and the data source have `id` and `architecture`, so either satisfies the constraint. The variable describes the common subset the module needs, not a specific resource type.",
+    "tags": ["modules", "type-constraints", "conditional-creation"]
+  },
+  {
+    "id": "tf-408",
+    "path": ["DevOps", "Terraform", "Modules", "Composition"],
+    "type": "concept",
+    "question": "For `type = object({ id = string, architecture = string })`, what happens if the caller passes an object with no `architecture` attribute, and how can that attribute be made optional?",
+    "answer": "It fails: attributes named in the constraint are required, and only *extra* attributes are tolerated. To make it optional, declare it with `optional()`, e.g. `architecture = optional(string)` (a second argument sets a default).",
+    "tags": ["modules", "type-constraints"]
+  },
+  {
+    "id": "tf-409",
+    "path": ["DevOps", "Terraform", "Modules", "Composition"],
+    "type": "concept",
+    "question": "Define an *assumption* and a *guarantee* of a module, with an example of each.",
+    "answer": "Assumption: a condition that must be true for a resource's configuration to be usable (e.g. an `aws_instance` assumes the given AMI is `x86_64`). Guarantee: a characteristic the rest of the configuration should be able to rely on (e.g. the instance runs in a network that assigns it a private DNS record). Validating your configuration captures and tests both, documents design intent, and reports errors earlier and in context.",
+    "tags": ["modules", "validation", "assumptions-guarantees"]
+  },
+  {
+    "id": "tf-410",
+    "path": ["DevOps", "Terraform", "Modules", "Composition"],
+    "type": "concept",
+    "question": "Which custom condition checks can an `output` block contain, and how does the syntax differ from a `resource` block?",
+    "answer": "An `output` supports `precondition` only (no `postcondition`), written directly inside the `output` block. Resources and data sources support both `precondition` and `postcondition`, placed inside a `lifecycle { }` block.",
+    "tags": ["outputs", "validation", "preconditions"]
+  },
+  {
+    "id": "tf-411",
+    "path": ["DevOps", "Terraform", "Modules", "Composition"],
+    "type": "applied",
+    "question": "```hcl\noutput \"api_base_url\" {\n  value = \"https://${aws_instance.example.private_dns}:8433/\"\n\n  precondition {\n    condition     = data.aws_ebs_volume.example.encrypted\n    error_message = \"The server's root volume is not encrypted.\"\n  }\n}\n```\nWhat does this enforce, and which module concept does it express?",
+    "answer": "If the root volume isn't encrypted, Terraform fails with the `error_message` when evaluating the output, so consumers never receive the URL. It encodes a *guarantee* at the module boundary: anything using this output can rely on the server's root volume being encrypted.",
+    "tags": ["outputs", "validation", "preconditions", "assumptions-guarantees"]
+  },
+  {
+    "id": "tf-412",
+    "path": ["DevOps", "Terraform", "Modules", "Composition"],
+    "type": "concept",
+    "question": "Why doesn't Terraform abstract over similar services from different vendors, and how can you build your own lightweight multi-cloud abstraction?",
+    "answer": "Unifying vendors behind one interface would force a \"lowest common denominator\" and hide each offering's full functionality. Instead, use module composition: define an object type for the shared concept (e.g. a DNS recordset), use it as the input variable type of interchangeable implementation modules, and make your own tradeoffs about which platform features matter. This works wherever vendors implement the same concept, protocol, or open standard.",
+    "tags": ["modules", "multi-cloud", "abstraction"]
+  },
+  {
+    "id": "tf-413",
+    "path": ["DevOps", "Terraform", "Modules", "Composition"],
+    "type": "applied",
+    "question": "```hcl\nmodule \"dns_records\" {\n  source          = \"./modules/route53-dns-records\"\n  route53_zone_id = var.route53_zone_id\n  recordsets      = concat(local.fixed_recordsets, local.server_recordsets)\n}\n```\nYou want to move DNS to a different provider. What changes and what stays the same?",
+    "answer": "Replace only the `dns_records` module with an implementation targeting the new provider. It must declare the same input variable: `recordsets = list(object({ name = string, type = string, ttl = number, records = list(string) }))`. The `locals` that produce the recordset definitions (and the `webserver` module) remain unchanged.",
+    "tags": ["modules", "multi-cloud", "abstraction", "type-constraints"]
+  },
+  {
+    "id": "tf-414",
+    "path": ["DevOps", "Terraform", "Modules", "Composition"],
+    "type": "concept",
+    "question": "In the Kubernetes example, what makes different cluster modules interchangeable for other modules such as `monitoring_tools`?",
+    "answer": "Each cluster module (Azure or otherwise) shares the common trait of exporting a `hostname` output (e.g. from `azurerm_kubernetes_cluster.main.fqdn`). Other modules expect only a cluster hostname as input (`cluster_hostname = module.k8s_cluster.hostname`), so they work with any of the cluster modules.",
+    "tags": ["modules", "multi-cloud", "outputs"]
+  },
+  {
+    "id": "tf-415",
+    "path": ["DevOps", "Terraform", "Modules", "Composition"],
+    "type": "concept",
+    "question": "What is a data-only module, when is it worthwhile, and how can it obtain its data?",
+    "answer": "A module with no `resource` blocks: it only retrieves information about existing infrastructure via data sources. As with normal modules, use it only when it raises the level of abstraction by encapsulating how the data is retrieved. Typical case: subsystem configurations sharing infrastructure such as a common network (e.g. a shared `join-network-aws` module). It can query the provider API (`aws_vpc`, `aws_subnet_ids`), read saved info from Consul (`consul_keys`), or read another configuration's outputs via `terraform_remote_state`.",
+    "tags": ["modules", "data-sources", "data-only-modules"]
+  },
+  {
+    "id": "tf-416",
+    "path": ["DevOps", "Terraform", "Modules", "Composition"],
+    "type": "concept",
+    "question": "What are the key benefits of a data-only module, and how can you make it easy to swap with a module that manages the same infrastructure?",
+    "answer": "The source of the information can change over time without updating every configuration that depends on it. If the data-only module exposes a similar set of outputs as a corresponding management module, you can swap between the two relatively easily when refactoring.",
+    "tags": ["modules", "data-only-modules", "refactoring"]
   }
 ]
