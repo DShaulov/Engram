@@ -3398,5 +3398,133 @@
     "question": "Which of these blocks may legally use `version`?\n```hcl\nmodule \"a\" {\n  source  = \"hashicorp/consul/aws\"\n  version = \"0.1.0\"\n}\nmodule \"b\" {\n  source  = \"app.terraform.io/example-corp/k8s-cluster/azurerm\"\n  version = \"1.1.0\"\n}\nmodule \"c\" {\n  source  = \"s3::https://s3-eu-west-1.amazonaws.com/examplecorp-terraform-modules/vpc.zip\"\n  version = \"1.0.0\"\n}\n```",
     "answer": "`a` and `b`. Both come from registries: the public Terraform Registry and an HCP Terraform private registry (the `app.terraform.io` prefix). `c` is an archive in an S3 bucket, not a registry, so `version` doesn't apply; you'd pin it by pointing `source` at a specific archive object.",
     "tags": ["version-constraints", "registry", "s3"]
+  },
+  {
+    "id": "tf-426",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "What limitations apply to the `backend` block in a configuration?",
+    "answer": "Only one backend block per configuration. It cannot refer to named values (input variables, locals, data source attributes), so there is no interpolation. And values declared inside it cannot be referenced elsewhere in the configuration.",
+    "tags": ["backend", "limitations"]
+  },
+  {
+    "id": "tf-427",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "applied",
+    "question": "What happens on `terraform init` with this configuration?\n```hcl\nvariable \"bucket_name\" {\n  type = string\n}\n\nterraform {\n  backend \"s3\" {\n    bucket = var.bucket_name\n    key    = \"app.tfstate\"\n    region = \"eu-central-1\"\n  }\n}\n```",
+    "answer": "It fails. A backend block cannot reference named values such as input variables. Hardcode the value, or use partial configuration (leave `bucket` empty and supply it with `-backend-config` at init).",
+    "tags": ["backend", "variables", "partial-configuration"]
+  },
+  {
+    "id": "tf-428",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "Can a configuration that has a `cloud` block also contain a `backend` block? What should you do about backends when connecting to HCP Terraform or Terraform Enterprise workspaces?",
+    "answer": "No, they are mutually exclusive. HCP Terraform and Terraform Enterprise manage state automatically in the workspaces tied to your configuration, so you should not configure a backend for them.",
+    "tags": ["backend", "cloud-block", "hcp-terraform"]
+  },
+  {
+    "id": "tf-429",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "Which backend does Terraform use if you configure none, and can you add extra backend types as plugins?",
+    "answer": "The `local` backend, which stores state as a file on disk. Backends are built into Terraform and cannot be loaded as plugins. The type you name must also exist in the Terraform version you are running.",
+    "tags": ["backend", "local"]
+  },
+  {
+    "id": "tf-430",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "How should you supply backend credentials, and why not hardcode them or pass them with `-backend-config`?",
+    "answer": "Leave credential arguments unset and use the environment variables or credential files conventional for the target system (for the Consul backend, `CONSUL_HTTP_TOKEN` or `CONSUL_HTTP_AUTH`). Hardcoding them or using `-backend-config` writes the values in plain text into the `.terraform` directory and into plan files, which can leak them.",
+    "tags": ["backend", "credentials", "security"]
+  },
+  {
+    "id": "tf-431",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "In which two places does Terraform write the backend configuration in plain text?",
+    "answer": "1. `.terraform/terraform.tfstate`, which holds the backend configuration for the current working directory.\n2. Every plan file, which captures the contents of `.terraform/terraform.tfstate` at the time the plan was created (so the plan is applied to the correct infrastructure).",
+    "tags": ["backend", "plan-files", "security"]
+  },
+  {
+    "id": "tf-432",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "applied",
+    "question": "Backend credentials are passed with `-backend-config` and expire after 15 minutes. What can go wrong here, and what should you do instead?\n```bash\nterraform init -backend-config=\"access_key=...\" -backend-config=\"secret_key=...\"\nterraform plan -out=tfplan   # 09:00\nterraform apply tfplan       # 10:00\n```",
+    "answer": "Applying a saved plan uses the backend configuration stored inside the plan file, not your current settings, so the time-limited credentials baked in at plan time may have expired and the apply can fail. Pass credentials through environment variables instead, so different values can be used between the plan and apply steps.",
+    "tags": ["backend", "plan-files", "credentials"]
+  },
+  {
+    "id": "tf-433",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "What does the local `.terraform/` directory contain after init, should it be committed to Git, and how does it differ from `terraform.tfstate`?",
+    "answer": "It holds the most recent backend configuration, including any authentication parameters you gave the CLI, so never commit it to Git. It is separate from `terraform.tfstate`, which holds state data about your real infrastructure and is stored in the remote backend.",
+    "tags": ["backend", "init", "security", "vcs"]
+  },
+  {
+    "id": "tf-434",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "What happens when you change a backend's configuration or type, including with multiple workspaces or when reconfiguring the same backend?",
+    "answer": "Terraform detects the change and requires reinitialization (`terraform init`) before any plan, apply, or state operation. During reinit it asks whether to migrate existing state to the new configuration. With multiple workspaces it asks whether to copy all of them to the destination. Even when you only reconfigure the same backend, it still asks about migrating, and you may answer \"no\".",
+    "tags": ["backend", "init", "migration", "workspaces"]
+  },
+  {
+    "id": "tf-435",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "What do the docs strongly recommend doing before migrating state to a new backend?",
+    "answer": "Manually back up your state by copying the `terraform.tfstate` file to another location, so you can recover if the migration goes wrong.",
+    "tags": ["backend", "migration", "backup"]
+  },
+  {
+    "id": "tf-436",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "How do you remove a backend configuration, and what does Terraform offer to do?",
+    "answer": "Delete the `backend` block from the configuration and reinitialize the directory when prompted. Terraform also prompts you to migrate the state to the default `local` backend.",
+    "tags": ["backend", "init", "migration", "local"]
+  },
+  {
+    "id": "tf-437",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "What is a partial backend configuration, what is the minimum that must appear in the root configuration, and what are the three ways to supply the rest?",
+    "answer": "A partial configuration omits some or all backend arguments, for example when automation supplies them. At minimum the root configuration must declare the backend type with an empty block, such as `backend \"consul\" {}`. The remaining arguments are provided at init by (1) a file via `-backend-config=PATH`, (2) key/value pairs via `-backend-config=\"KEY=VALUE\"`, or (3) an interactive prompt.",
+    "tags": ["backend", "partial-configuration", "init"]
+  },
+  {
+    "id": "tf-438",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "applied",
+    "question": "Which bucket does Terraform use, and why?\n```hcl\n# main.tf\nterraform {\n  backend \"s3\" {\n    bucket = \"a\"\n    key    = \"app.tfstate\"\n    region = \"eu-central-1\"\n  }\n}\n```\n```text\n# x.s3.tfbackend\nbucket = \"b\"\n```\n```bash\nterraform init -backend-config=\"./x.s3.tfbackend\" -backend-config=\"bucket=c\"\n```",
+    "answer": "`c`. Command-line options override the settings in the main configuration, and the options are processed in order, with later ones overriding earlier ones. The file gives `b`, then the key/value pair gives `c`. If you swapped the order of the two flags, `b` would win.",
+    "tags": ["backend", "partial-configuration", "precedence"]
+  },
+  {
+    "id": "tf-439",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "What format does a backend configuration file for `-backend-config=PATH` use, and what file name pattern is recommended?",
+    "answer": "The contents of the `backend` block appear as top-level attributes, with no `terraform` or `backend` wrapper block (for example `address = \"demo.consul.io\"`). The recommended name is `*.backendname.tfbackend` (e.g. `config.consul.tfbackend`). Other names work, but the convention helps editors understand the file.",
+    "tags": ["backend", "partial-configuration", "tfbackend"]
+  },
+  {
+    "id": "tf-440",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "When you use partial configuration and provide values interactively, which values does Terraform prompt for, and when does it not prompt at all?",
+    "answer": "It prompts only for required values, never for optional ones. It does not prompt when interactive input is disabled.",
+    "tags": ["backend", "partial-configuration", "interactive"]
+  },
+  {
+    "id": "tf-441",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "With partial configuration, where is the final merged backend configuration stored, and what does that mean for secrets you keep out of version control?",
+    "answer": "In the `.terraform` directory, which should be ignored by version control. Secrets can stay out of VCS, but they are present in plain text on the local disk while Terraform runs. Secrets kept in a secure store such as Vault must be downloaded to local disk before running Terraform, and key/value flags are a poor choice for secrets because shells keep command history.",
+    "tags": ["backend", "partial-configuration", "security", "vcs"]
   }
 ]
