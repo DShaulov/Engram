@@ -3606,5 +3606,125 @@
     "question": "What does HashiCorp recommend instead of the legacy state flags for new systems, even in automation, and why?",
     "answer": "Select a backend that supports remote state and configure it in the root module. Everyone working on the configuration then automatically retrieves and stores state in the correct shared location, with no special command line options needed.",
     "tags": ["cli", "legacy", "remote-state"]
+  },
+  {
+    "id": "tf-452",
+    "path": ["DevOps","Terraform","State","Backends"],
+    "type": "concept",
+    "question": "What are the two responsibilities of a Terraform backend, and which one is optional?",
+    "answer": "(1) Storing state, and (2) providing an API for state locking. Locking is the optional one: not every backend supports it.",
+    "tags": ["backend","locking"]
+  },
+  {
+    "id": "tf-453",
+    "path": ["DevOps","Terraform","State","Backends"],
+    "type": "concept",
+    "question": "If state is stored in a remote backend, do commands like `terraform console`, `terraform state ...` and `terraform taint` still work? How do they behave?",
+    "answer": "Yes. They work exactly as if the state were local. The backend is transparent to the commands.",
+    "tags": ["backend","cli"]
+  },
+  {
+    "id": "tf-454",
+    "path": ["DevOps","Terraform","State","Backends"],
+    "type": "concept",
+    "question": "Where do the local (default) backend and the Consul backend each store state, and how does each one provide locking?",
+    "answer": "Local: a local JSON file on disk, locking via system APIs. Consul: state stored inside Consul, locking via Consul's locking APIs. Both provide locking.",
+    "tags": ["backend","locking","consul"]
+  },
+  {
+    "id": "tf-455",
+    "path": ["DevOps","Terraform","State","Backends"],
+    "type": "concept",
+    "question": "With a non-local backend, does Terraform keep state on the local disk? Why is that behavior a security benefit?",
+    "answer": "No. It doesn't persist state anywhere on disk, except after a non-recoverable failure writing to the backend. This lets you use Terraform without sensitive values in state ever being persisted to your local disk.",
+    "tags": ["backend","security"]
+  },
+  {
+    "id": "tf-456",
+    "path": ["DevOps","Terraform","State","Backends"],
+    "type": "applied",
+    "question": "A `terraform apply` using a remote backend fails to write the final state to the backend (non-recoverable error). Where does the state end up, and what must you do once the error is fixed?",
+    "answer": "Terraform writes the state locally to prevent data loss (the one case where a remote-backend user gets state on disk). Once the error is resolved, you must manually push that state to the remote backend; it is not synced automatically.",
+    "tags": ["backend","state-push"]
+  },
+  {
+    "id": "tf-457",
+    "path": ["DevOps","Terraform","State","Manual State"],
+    "type": "concept",
+    "question": "What does `terraform state pull` do, and what is it commonly used for?",
+    "answer": "It loads the remote state and prints it to stdout. You can save it to a file (e.g. as a backup) or process it further.\n```bash\nterraform state pull > backup.tfstate\n```",
+    "tags": ["cli","state-pull"]
+  },
+  {
+    "id": "tf-458",
+    "path": ["DevOps","Terraform","State","Manual State"],
+    "type": "concept",
+    "question": "What does `terraform state push` do, why do the docs call it extremely dangerous, and when is it legitimately used?",
+    "answer": "It manually writes state and overwrites the remote state. It should be avoided if possible, but it can be used for manual fixups when necessary.",
+    "tags": ["cli","state-push"]
+  },
+  {
+    "id": "tf-459",
+    "path": ["DevOps","Terraform","State","Manual State"],
+    "type": "concept",
+    "question": "What is a state's \"lineage\", and how does it protect `terraform state push`?",
+    "answer": "Lineage is a unique ID assigned to a state when it is created. If the lineages differ, the states were created at different times and you're very likely modifying a different state, so Terraform refuses the push.",
+    "tags": ["state-push","safety"]
+  },
+  {
+    "id": "tf-460",
+    "path": ["DevOps","Terraform","State","Manual State"],
+    "type": "concept",
+    "question": "What is a state's \"serial\", and how does it protect `terraform state push`?",
+    "answer": "The serial is a monotonically increasing number on every state. If the destination state has a higher serial, Terraform refuses the push, because changes have happened since the state you're trying to write.",
+    "tags": ["state-push","safety"]
+  },
+  {
+    "id": "tf-461",
+    "path": ["DevOps","Terraform","State","Manual State"],
+    "type": "applied",
+    "question": "The remote state has serial 42. You run this, and `older.tfstate` has the same lineage but serial 37. What happens and why?\n```bash\nterraform state push older.tfstate\n```",
+    "answer": "Terraform refuses. The destination has a higher serial, meaning changes occurred after the state you're trying to write, so pushing would clobber newer state. `-force` can bypass this, but back up first.",
+    "tags": ["state-push","safety"]
+  },
+  {
+    "id": "tf-462",
+    "path": ["DevOps","Terraform","State","Manual State"],
+    "type": "applied",
+    "question": "You're sure you need to override the lineage/serial checks and overwrite the remote state with `fixed.tfstate`. What sequence of commands does the documentation recommend?",
+    "answer": "Back up the current remote state first, then force the push:\n```bash\nterraform state pull > backup.tfstate\nterraform state push -force fixed.tfstate\n```\n`-force` bypasses both the lineage and serial protections, so the pull-backup is your only safety net.",
+    "tags": ["state-push","cli","safety"]
+  },
+  {
+    "id": "tf-463",
+    "path": ["DevOps","Terraform","State","Locking"],
+    "type": "concept",
+    "question": "Does every backend support state locking? Where do you check whether a particular backend does?",
+    "answer": "No. Locking is supported \"if possible\", and not all backends have it. Each backend's own documentation page states whether it supports locking.",
+    "tags": ["backend","locking"]
+  },
+  {
+    "id": "tf-464",
+    "path": ["DevOps","Terraform","CLI"],
+    "type": "concept",
+    "question": "What does `terraform taint <address>` do, does it change real infrastructure, and how do you undo it?",
+    "answer": "It marks a resource instance in state as tainted (degraded/untrustworthy). It does not touch real infrastructure. On the next `apply`, Terraform destroys and recreates it (`plan` shows `-/+`). Undo before applying with `terraform untaint <address>`.",
+    "tags": ["taint","cli","state"]
+  },
+  {
+    "id": "tf-465",
+    "path": ["DevOps","Terraform","CLI"],
+    "type": "concept",
+    "question": "Besides running `terraform taint` yourself, when does Terraform automatically mark a resource as tainted?",
+    "answer": "When a creation-time provisioner fails. The resource was created but is considered broken, so it is tainted and replaced on the next apply.",
+    "tags": ["taint","provisioners"]
+  },
+  {
+    "id": "tf-466",
+    "path": ["DevOps","Terraform","CLI"],
+    "type": "applied",
+    "question": "Teammate A runs `terraform taint aws_instance.web`. Later, teammate B runs a normal `terraform apply` on the same config. What can go wrong, and how does the recommended alternative avoid it?",
+    "answer": "B's apply may unexpectedly replace the instance, since taint changed state ahead of any reviewed plan. The recommended alternative (since v0.15.2) is:\n```bash\nterraform apply -replace=\"aws_instance.web\"\n```\nThe replacement appears in the plan you approve within one apply, with no separate state modification.",
+    "tags": ["taint","replace","cli"]
   }
 ]
