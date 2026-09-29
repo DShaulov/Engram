@@ -3726,5 +3726,85 @@
     "question": "Teammate A runs `terraform taint aws_instance.web`. Later, teammate B runs a normal `terraform apply` on the same config. What can go wrong, and how does the recommended alternative avoid it?",
     "answer": "B's apply may unexpectedly replace the instance, since taint changed state ahead of any reviewed plan. The recommended alternative (since v0.15.2) is:\n```bash\nterraform apply -replace=\"aws_instance.web\"\n```\nThe replacement appears in the plan you approve within one apply, with no separate state modification.",
     "tags": ["taint","replace","cli"]
+  },
+  {
+    "id": "tf-467",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "What does Terraform state locking do, which operations trigger it, and does it show any message when it happens?",
+    "answer": "If the backend supports it, Terraform locks state for every operation that could write state, so nobody else can acquire the lock and corrupt the state. It is automatic, with no opt-in and normally no message shown.",
+    "tags": ["locking", "backends"]
+  },
+  {
+    "id": "tf-468",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "What does Terraform do when it fails to acquire the state lock?",
+    "answer": "It does not continue. The operation stops rather than proceeding without the lock, which protects state from concurrent writers.",
+    "tags": ["locking"]
+  },
+  {
+    "id": "tf-469",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "How do you opt out of state locking, how far does that reach, and is it recommended?",
+    "answer": "Pass `-lock=false`. It disables locking for most commands (not literally all), and HashiCorp recommends against it. Locking is on by default and you can only opt out, never opt in.",
+    "tags": ["locking", "cli"]
+  },
+  {
+    "id": "tf-470",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "applied",
+    "question": "You run `terraform apply` and see no locking message at all. Can you conclude that no lock was taken? Why or why not?",
+    "answer": "No. Locking is silent by default. Terraform only prints a status message when acquiring the lock takes longer than expected. No message means either a fast acquisition or a backend without locking support, so it says nothing about whether locking happened.",
+    "tags": ["locking"]
+  },
+  {
+    "id": "tf-471",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "Do all backends support state locking? Where do you check for a specific backend?",
+    "answer": "No. Locking is a per-backend capability. Each backend's documentation states whether it supports locking, and on a backend without support you get no lock protection even though Terraform never warns you.",
+    "tags": ["locking", "backends"]
+  },
+  {
+    "id": "tf-472",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "What is `terraform force-unlock` for, and when is it the right tool?",
+    "answer": "It manually releases a state lock when automatic unlocking failed. It should only be used to release your own lock in that situation, for example after your run crashed and unlocking failed.",
+    "tags": ["locking", "cli"]
+  },
+  {
+    "id": "tf-473",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "Why does `force-unlock` require a lock ID, and where does that ID come from?",
+    "answer": "The lock ID is a safeguard that acts like a nonce, ensuring the unlock targets the correct lock. Terraform outputs the ID when unlocking fails, so you can't force-unlock without first having the failure output.",
+    "tags": ["locking", "cli"]
+  },
+  {
+    "id": "tf-474",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "What is the danger of running `force-unlock` while someone else holds the lock?",
+    "answer": "You can end up with multiple writers on the same state, which is exactly the corruption locking exists to prevent. Never use it to release a lock that belongs to another person or process.",
+    "tags": ["locking", "risk"]
+  },
+  {
+    "id": "tf-475",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "applied",
+    "question": "Your `apply` crashed, and unlocking failed with a lock ID in the output. Which command do you run, and what must you be sure of first?\n```bash\nterraform force-unlock <LOCK_ID>\n```",
+    "answer": "Running `terraform force-unlock <LOCK_ID>` with the ID from the failure output is appropriate. First be sure the lock is your own and that no other run is legitimately holding it, since force-unlocking someone else's active lock risks multiple writers.",
+    "tags": ["locking", "cli"]
+  },
+  {
+    "id": "tf-476",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "applied",
+    "question": "A CI job runs the command below while a teammate is mid-`apply` against the same remote state. What is the risk?\n```bash\nterraform apply -lock=false\n```",
+    "answer": "With locking disabled, the CI job doesn't try to acquire the lock, so both runs can write state at once. This can corrupt state, which is why `-lock=false` is not recommended. Without the flag, the second run would fail to acquire the lock and stop instead.",
+    "tags": ["locking", "cli", "risk"]
   }
 ]
