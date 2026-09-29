@@ -3526,5 +3526,85 @@
     "question": "With partial configuration, where is the final merged backend configuration stored, and what does that mean for secrets you keep out of version control?",
     "answer": "In the `.terraform` directory, which should be ignored by version control. Secrets can stay out of VCS, but they are present in plain text on the local disk while Terraform runs. Secrets kept in a secure store such as Vault must be downloaded to local disk before running Terraform, and key/value flags are a poor choice for secrets because shells keep command history.",
     "tags": ["backend", "partial-configuration", "security", "vcs"]
+  },
+  {
+    "id": "tf-442",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "What does the `local` backend do, and when is it used?",
+    "answer": "It is an enhanced backend: it stores state as a file on the local filesystem, locks that state using system APIs, and performs operations locally. It is the default — a configuration with no `backend` block uses it.",
+    "tags": ["backends", "locking"]
+  },
+  {
+    "id": "tf-443",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "What configuration options does the `local` backend support, and what is the default state file location?",
+    "answer": "Two options, both optional: `path` (location of the `tfstate` file; defaults to `terraform.tfstate` relative to the root module) and `workspace_dir` (location for non-default workspaces).",
+    "tags": ["backends", "workspaces"]
+  },
+  {
+    "id": "tf-444",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "applied",
+    "question": "What does this configuration do, and where does the `path` setting go?\n```hcl\ndata \"terraform_remote_state\" \"foo\" {\n  backend = \"local\"\n\n  config = {\n    path = \"${path.module}/../../terraform.tfstate\"\n  }\n}\n```",
+    "answer": "It reads another configuration's state from a local `terraform.tfstate` file located two directories above the current module (built from `path.module`). Backend settings such as `path` go inside the `config` map, not directly on the data block.",
+    "tags": ["remote-state", "data-sources"]
+  },
+  {
+    "id": "tf-445",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "What do the legacy `-state`, `-state-out`, and `-backup` flags do, and why do they exist?",
+    "answer": "`-state=FILENAME` overrides the filename used when reading the prior state snapshot; `-state-out=FILENAME` overrides the filename used when writing new snapshots; `-backup=FILENAME` overrides the backup filename the local backend would otherwise choose. They date from before built-in remote state, when wrapper scripts fetched state before running Terraform and saved it afterwards — typically all three pointed into a temporary directory used for a single operation.",
+    "tags": ["cli", "legacy"]
+  },
+  {
+    "id": "tf-446",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "applied",
+    "question": "You run this with the local backend and no other state flags. What happens to `foo.tfstate`, and how are backup files named?\n```bash\nterraform apply -state=foo.tfstate\n```",
+    "answer": "Without `-state-out`, Terraform uses the `-state` filename for writing as well, so it overwrites `foo.tfstate` when it saves a new snapshot. Without `-backup`, the `-state` filename is used as the prefix for the generated backup filename.",
+    "tags": ["cli", "legacy", "backups"]
+  },
+  {
+    "id": "tf-447",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "How do you disable backup file creation with the local backend?",
+    "answer": "Set the backup filename to a single ASCII dash: `-backup=-`.",
+    "tags": ["cli", "backups"]
+  },
+  {
+    "id": "tf-448",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "What happens to per-workspace state filenames when you set `-state`, `-state-out`, and `-backup` together?",
+    "answer": "These flags predate multiple workspaces and override Terraform's usual behavior of choosing a state filename based on the selected workspace. With all three set, the selected workspace has no effect on which state files are used, so you must pick distinct filenames yourself to keep workspace states separate.",
+    "tags": ["cli", "legacy", "workspaces"]
+  },
+  {
+    "id": "tf-449",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "Which configurations do the `-state`, `-state-out`, and `-backup` flags affect?",
+    "answer": "Only configurations that use the local backend — either an explicit `backend \"local\"` block or no backend specified at all (which defaults to local). For configurations with any other backend type selected, the flags have no effect.",
+    "tags": ["cli", "legacy"]
+  },
+  {
+    "id": "tf-450",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "applied",
+    "question": "A configuration declares `backend \"s3\" {}`. You run this. Which state file does Terraform read?\n```bash\nterraform plan -state=other.tfstate\n```",
+    "answer": "Not `other.tfstate`. The legacy state flags have no effect when a non-local backend is selected, so Terraform keeps using the state stored in the S3 backend.",
+    "tags": ["cli", "legacy", "s3"]
+  },
+  {
+    "id": "tf-451",
+    "path": ["DevOps", "Terraform", "State", "Backends"],
+    "type": "concept",
+    "question": "What does HashiCorp recommend instead of the legacy state flags for new systems, even in automation, and why?",
+    "answer": "Select a backend that supports remote state and configure it in the root module. Everyone working on the configuration then automatically retrieves and stores state in the correct shared location, with no special command line options needed.",
+    "tags": ["cli", "legacy", "remote-state"]
   }
 ]
