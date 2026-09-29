@@ -3934,5 +3934,133 @@
     "question": "What does Terraform do before any operation to keep state in sync with real infrastructure, and what does it then use state for?",
     "answer": "It performs a refresh, updating state with the real infrastructure's current status. It then uses state to determine which changes to make to the infrastructure.",
     "tags": ["state", "refresh"]
+  },
+  {
+    "id": "tf-493",
+    "path": ["DevOps", "Terraform", "State", "Refactoring"],
+    "type": "concept",
+    "question": "Name the four common opportunities that justify refactoring a Terraform configuration and its state.",
+    "answer": "1) Long applies: a monolithic config makes plan/apply slow and risks unintended changes. 2) Changes to management lifecycles: separate frequently updated resources from rarely updated ones to shrink the blast radius. 3) Changes to resource ownership: teams split config and state to match who owns what. 4) Reusable module opportunity: the same set of resources appears in several configs, so group it into a module.",
+    "tags": ["refactor", "planning"]
+  },
+  {
+    "id": "tf-494",
+    "path": ["DevOps", "Terraform", "State", "Refactoring"],
+    "type": "concept",
+    "question": "What three resource properties should you weigh when deciding how to group resources into separate state files, and why does the stateful-vs-stateless split matter?",
+    "answer": "1) Volatility / rate of change (keep long-lived infra like networking away from resources that change often). 2) Stateful vs stateless. 3) Access and team responsibility (split workspaces by team so only people who know an area change it). Separating stateful resources (databases) from stateless ones (compute) limits the blast radius of operations that re-provision resources and protects against accidental data loss.",
+    "tags": ["refactor", "planning", "blast-radius"]
+  },
+  {
+    "id": "tf-495",
+    "path": ["DevOps", "Terraform", "State", "Refactoring"],
+    "type": "concept",
+    "question": "You move network resources into a new state file. What breaks for the compute resources that used them, and what does HashiCorp recommend instead of hard-coding the network's values?",
+    "answer": "The compute resources can no longer reference the network directly, because it now lives in a different state. Hard-coding its values means manual updates whenever they change, which leads to errors in the config or the deployed resources. Recommended: use dynamic references (a data source, `tfe_outputs`, or `terraform_remote_state`). `terraform graph` helps you spot such dependencies before you migrate.",
+    "tags": ["dependencies", "data-source", "graph"]
+  },
+  {
+    "id": "tf-496",
+    "path": ["DevOps", "Terraform", "State", "Refactoring"],
+    "type": "concept",
+    "question": "Name the three dynamic ways to reference resources managed in another state, and when each applies. What extra requirement exists for HCP Terraform?",
+    "answer": "1) A resource-specific data source (e.g. `aws_vpc`), if the provider supports it, to query the cloud provider. 2) `tfe_outputs`, for HCP Terraform / Terraform Enterprise, to read outputs from another workspace. 3) `terraform_remote_state`, for other remote backends or the local backend. To read state from an HCP Terraform workspace with `terraform_remote_state`, you must explicitly specify which other workspaces have access (remote state sharing).",
+    "tags": ["dependencies", "remote-state", "hcp-terraform"]
+  },
+  {
+    "id": "tf-497",
+    "path": ["DevOps", "Terraform", "State", "Refactoring"],
+    "type": "concept",
+    "question": "When refactoring, which resources should you simply recreate in the new configuration, and which must be moved between state files? Why?",
+    "answer": "Stateless resources: recreate them in the new config if you can do so without downtime or extra cost. Stateful resources (databases, object stores): move them between state files, because you often can't delete and recreate them, or backup and restore of the data is complex and expensive.",
+    "tags": ["migration", "stateful"]
+  },
+  {
+    "id": "tf-498",
+    "path": ["DevOps", "Terraform", "State", "Refactoring"],
+    "type": "concept",
+    "question": "What are the two common approaches to migrating a resource between state files, which one is recommended and why, and what Terraform version does each need?",
+    "answer": "1) Remove and import (`removed` + `import` blocks): recommended, because the blocks keep a record of the configuration history. Needs Terraform 1.7+. 2) Move directly with `terraform state mv`: a legacy command. Needs Terraform 1.0+. Use the block-based approach for any new migration.",
+    "tags": ["migration", "versions", "removed", "import"]
+  },
+  {
+    "id": "tf-499",
+    "path": ["DevOps", "Terraform", "State", "Refactoring"],
+    "type": "applied",
+    "question": "In the source config of a remove-and-import migration, what replaces the `resource` block, which setting keeps the real infrastructure alive, and what should the source `terraform plan` say when it's correct?",
+    "answer": "A `removed` block replaces the `resource` block:\n```hcl\nremoved {\n  from = aws_instance.example\n  lifecycle {\n    destroy = false\n  }\n}\n```\n`destroy = false` removes the resource from state without destroying it. A correct plan says the resource \"will no longer be managed by Terraform, but will not be destroyed\". Then `terraform apply` drops it from state.",
+    "tags": ["removed", "lifecycle"]
+  },
+  {
+    "id": "tf-500",
+    "path": ["DevOps", "Terraform", "State", "Refactoring"],
+    "type": "applied",
+    "question": "Put the remove-and-import migration steps in order across the source and destination configs.",
+    "answer": "Source config: 1) `terraform state pull > terraform.tfstate.backup` (backup). 2) Check the provider's import attribute and note the resource's ID (`terraform state show`). 3) Replace the `resource` block with a `removed` block. 4) `terraform plan` and confirm nothing is destroyed. 5) `terraform apply`. Destination config: 1) Add the `resource` block. 2) Add an `import` block. 3) `terraform plan` to confirm the import. 4) `terraform apply`. Afterwards the `removed` and `import` blocks can be deleted or kept as a lifecycle record.",
+    "tags": ["migration", "workflow", "removed", "import"]
+  },
+  {
+    "id": "tf-501",
+    "path": ["DevOps", "Terraform", "State", "Refactoring"],
+    "type": "applied",
+    "question": "This `import` block sits next to a matching `resource` block in the destination config. What should `terraform plan` and `terraform apply` report if the migration is correct, and what does it mean if the plan shows changes to the resource?\n```hcl\nimport {\n  id = \"i-07b510cff5f79af00\"\n  to = aws_instance.example\n}\n```",
+    "answer": "The plan says the resource will be imported, with a summary of `1 to import, 0 to add, 0 to change, 0 to destroy`. Apply ends with `1 imported, 0 added, 0 changed, 0 destroyed`. If the plan shows changes to the resource, the `resource` block doesn't match the real resource, so fix the config until the plan is clean before applying.",
+    "tags": ["import", "plan"]
+  },
+  {
+    "id": "tf-502",
+    "path": ["DevOps", "Terraform", "State", "Refactoring"],
+    "type": "concept",
+    "question": "Before replacing a `resource` block with a `removed` block, how do you find the value to use in the `import` block for the destination?",
+    "answer": "Check your provider's documentation for which attribute imports that resource type (for `aws_instance` it is the `id` attribute), then read its value with `terraform state show aws_instance.example` before you remove it from the source.",
+    "tags": ["import", "cli"]
+  },
+  {
+    "id": "tf-503",
+    "path": ["DevOps", "Terraform", "State", "Refactoring"],
+    "type": "applied",
+    "question": "What do the flags and final two arguments in this command mean?\n```bash\nterraform state mv -state source/source.tfstate -state-out destination/destination.tfstate aws_instance.example aws_instance.example\n```",
+    "answer": "`-state` points to the source state file and `-state-out` to the destination state file. The final two arguments are the resource address to move out of the source state and the address it gets in the destination state. Repeat for every resource you migrate. The `-state` and `-state-out` flags are legacy options kept for backwards compatibility.",
+    "tags": ["state-mv", "cli", "legacy"]
+  },
+  {
+    "id": "tf-504",
+    "path": ["DevOps", "Terraform", "State", "Refactoring"],
+    "type": "concept",
+    "question": "Why is the `terraform state mv` approach risky with a remote backend, and what extra commands does it require?",
+    "answer": "With a remote backend (HCP Terraform, S3) you must first `terraform state pull` both the source and destination states to local files, run `state mv`, then `terraform state push` both back. Terraform performs safety checks on manual remote state updates, but the method still has some risk of corrupting your remote state. With the local backend you can move directly between two state files.",
+    "tags": ["state-mv", "state-pull", "state-push", "risk"]
+  },
+  {
+    "id": "tf-505",
+    "path": ["DevOps", "Terraform", "State", "Refactoring"],
+    "type": "concept",
+    "question": "After moving a resource with `terraform state mv`, how do you update the configs and verify the migration?",
+    "answer": "1) Remove the migrated resources from the source config. 2) `terraform plan` on the source: no changes to infrastructure. 3) Add the resources to the destination config. 4) `terraform plan` on the destination: no changes to infrastructure. 5) Open pull requests for both repos and review any speculative plans, which should also show no changes. 6) Merge.",
+    "tags": ["state-mv", "verification"]
+  },
+  {
+    "id": "tf-506",
+    "path": ["DevOps", "Terraform", "State", "Refactoring"],
+    "type": "applied",
+    "question": "You replace `aws_s3_bucket.uploads` with a `removed` block in the source config, but `aws_instance.web` still uses `aws_s3_bucket.uploads.bucket` in its `user_data`. What breaks, and how do you fix it?",
+    "answer": "The reference now points at a resource that is no longer declared, so the plan fails. Fix it before applying by switching to a dynamic reference, for example an `aws_s3_bucket` data source keyed by the bucket name, and using `data.aws_s3_bucket.uploads.bucket` in `user_data`. Then confirm the plan shows no destroy and no change to `aws_instance.web`.",
+    "tags": ["removed", "dependencies", "data-source"]
+  },
+  {
+    "id": "tf-507",
+    "path": ["DevOps", "Terraform", "State", "Refactoring"],
+    "type": "concept",
+    "question": "A data source with a literal bucket name in the old config is dynamic for attributes but still weak. Why, and what is the better end state once the new config has applied?",
+    "answer": "The data source looks up the bucket's real attributes, but its lookup key is still a literal name copied into several places, so a rename means manual updates, which is the hard-coding problem. It works as a bridge during migration, when the new config has no outputs yet. Better end state: the new config exposes an `output`, and the old config reads it via `terraform_remote_state` (or `tfe_outputs` on HCP Terraform), so the value lives in one place.",
+    "tags": ["dependencies", "remote-state", "outputs"]
+  },
+  {
+    "id": "tf-508",
+    "path": ["DevOps", "Terraform", "State", "Refactoring"],
+    "type": "concept",
+    "question": "In a remove-and-import migration, what state is the resource in between the source apply and the destination apply, and how do you handle that gap?",
+    "answer": "Managed by no state at all: the source has dropped it and the destination hasn't imported it yet. Run the two applies back to back, and don't let CI or teammates apply either config in between.",
+    "tags": ["migration", "workflow", "risk"]
   }
 ]
