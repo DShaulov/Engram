@@ -3806,5 +3806,133 @@
     "question": "A CI job runs the command below while a teammate is mid-`apply` against the same remote state. What is the risk?\n```bash\nterraform apply -lock=false\n```",
     "answer": "With locking disabled, the CI job doesn't try to acquire the lock, so both runs can write state at once. This can corrupt state, which is why `-lock=false` is not recommended. Without the flag, the second run would fail to acquire the lock and stop instead.",
     "tags": ["locking", "cli", "risk"]
+  },
+  {
+    "id": "tf-477",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "What is Terraform state used for, what is the default storage, and what does the v1.12.x docs page recommend instead for teams?",
+    "answer": "State maps real-world resources to your configuration, tracks metadata, and improves performance on large infrastructures. By default it lives in a local file named `terraform.tfstate`. For teams, the docs recommend HCP Terraform, which versions, encrypts, and securely shares state.",
+    "tags": ["state", "hcp-terraform"]
+  },
+  {
+    "id": "tf-478",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "What is the primary purpose of Terraform state, and what happens when Terraform creates a remote object?",
+    "answer": "To store bindings between remote objects and the resource instances declared in your config. When Terraform creates a remote object, it records that object's identity against a specific resource instance, so later config changes can update or delete that same object.",
+    "tags": ["state", "bindings"]
+  },
+  {
+    "id": "tf-479",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "The state file is plain JSON. Why does the documentation still discourage editing it directly, and what should you use instead?",
+    "answer": "The state format can change between Terraform versions. Use the `terraform state` CLI for basic modifications: its output is structured for Unix tools like grep and awk, and it insulates you from format changes because HashiCorp keeps the CLI working while the underlying format may shift.",
+    "tags": ["state", "cli"]
+  },
+  {
+    "id": "tf-480",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "How compatible is the state snapshot format across Terraform versions, and what does that mean for software you write that parses it directly?",
+    "answer": "New Terraform versions are generally backward compatible with snapshots from earlier versions, but the format is subject to change. Software that parses or modifies state directly needs ongoing maintenance as the format evolves. The stable alternative is the `-json` output of supported commands.",
+    "tags": ["state", "format"]
+  },
+  {
+    "id": "tf-481",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "Which two commands offer `-json` output intended for external software to consume state, and what does each return?",
+    "answer": "`terraform output -json` returns all root module output values, or one named output, from the latest state snapshot. `terraform show -json` returns the full latest state snapshot, and can also inspect saved plan files.",
+    "tags": ["state", "cli", "json"]
+  },
+  {
+    "id": "tf-482",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "applied",
+    "question": "You run this against a saved plan file:\n```bash\nterraform show -json tfplan\n```\nBesides the planned changes, what state-related data does the plan file carry?",
+    "answer": "A copy of the prior state as it was at the time the plan was made. That is why `terraform show -json` can inspect a saved plan, not just the current state.",
+    "tags": ["state", "plan", "cli"]
+  },
+  {
+    "id": "tf-483",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "applied",
+    "question": "Your automation pipeline needs to give other software a representation of the latest state without that software running Terraform. When do you run the `-json` commands, and what do you do with the result?",
+    "answer": "Run them immediately after a successful `terraform apply`, then store the output as an artifact associated with that automated run. Other software consumes the artifact instead of running Terraform itself.",
+    "tags": ["state", "automation", "cicd"]
+  },
+  {
+    "id": "tf-484",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "What is the one-to-one rule Terraform expects between config and remote objects, and why does it normally hold without effort?",
+    "answer": "Terraform expects exactly one remote object per configured resource instance. It normally holds automatically because Terraform itself creates each object and records its identity in state, or destroys the object and removes the binding.",
+    "tags": ["state", "bindings"]
+  },
+  {
+    "id": "tf-485",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "Which two commands can break the one-to-one rule, and who becomes responsible for restoring it?",
+    "answer": "`terraform import` (adds a binding for an externally created object) and `terraform state rm` (makes Terraform \"forget\" an object). Once you add or remove bindings this way, you are responsible for ensuring the one-to-one rule still holds, e.g. manually deleting a forgotten object or re-importing it to bind it to a different resource instance.",
+    "tags": ["state", "import", "cli"]
+  },
+  {
+    "id": "tf-486",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "applied",
+    "question": "You run `terraform state rm aws_instance.web`, leave the config unchanged, and then run `terraform apply`. What does apply plan to do, and what is the risk?",
+    "answer": "It plans to create `aws_instance.web`, because config declares it and state has no binding. The original instance was never destroyed by `state rm`, so you end up with two real instances (double cost, one unmanaged). If the resource has a unique identifier (e.g. an S3 bucket name), the create can fail instead because the old object still holds the name.",
+    "tags": ["state", "cli", "ec2"]
+  },
+  {
+    "id": "tf-487",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "What does `terraform import` change, and does it modify your configuration files?",
+    "answer": "It only adds a binding to state, tying a real object's ID to a resource address in config. It never creates infrastructure and never writes or edits your config. With the classic CLI form, the destination `resource` block must already exist in your config or the command errors.",
+    "tags": ["state", "import", "cli"]
+  },
+  {
+    "id": "tf-488",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "What are the declarative `import` block (Terraform 1.5+) and `-generate-config-out` for, and what should you still do with the result?",
+    "answer": "The `import` block runs the import during plan/apply instead of as a one-off command. `terraform plan -generate-config-out=file.tf` drafts resource config for the imported object. The generated config is a starting point: review it and adjust until the plan shows no changes.",
+    "tags": ["state", "import", "plan"]
+  },
+  {
+    "id": "tf-489",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "applied",
+    "question": "You import an existing S3 bucket, but your resource block omits a tag the real bucket has. You then run `terraform apply` without checking the plan. What happens?",
+    "answer": "The import succeeded, so the bucket is managed. Apply compares config to the real object and updates the bucket in place to match your config, removing the tag. Config wins over reality, so an incomplete config can modify (or, for some attributes, replace) a live resource. Always read `terraform plan` after importing.",
+    "tags": ["state", "import", "s3"]
+  },
+  {
+    "id": "tf-490",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "applied",
+    "question": "State contains a binding for `aws_instance.web`, but you delete its `resource` block from config and run `terraform plan`. What does Terraform propose, and how is this different from `terraform state rm`?",
+    "answer": "It proposes destroying the instance: a managed resource in state that config no longer declares is treated as unwanted. `terraform state rm` removes only the state binding and leaves the real object running, while deleting the config block with the binding still in state causes a destroy.",
+    "tags": ["state", "plan", "destroy"]
+  },
+  {
+    "id": "tf-491",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "What is the safe workflow for bringing an existing resource under Terraform management with the classic import command?",
+    "answer": "1) Write the resource block in config. 2) Run `terraform import <address> <id>`. 3) Run `terraform plan`. 4) Adjust config until the plan shows no changes. 5) Only then apply.",
+    "tags": ["state", "import", "workflow"]
+  },
+  {
+    "id": "tf-492",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "What does Terraform do before any operation to keep state in sync with real infrastructure, and what does it then use state for?",
+    "answer": "It performs a refresh, updating state with the real infrastructure's current status. It then uses state to determine which changes to make to the infrastructure.",
+    "tags": ["state", "refresh"]
   }
 ]
