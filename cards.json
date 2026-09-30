@@ -4398,5 +4398,101 @@
     "question": "Can arguments in a `connection` block use ephemeral values?",
     "answer": "Yes. Ephemeral values are allowed for arguments in the `connection` block (refer to the Manage sensitive data docs).",
     "tags": ["ephemeral","sensitive-data"]
+  },
+  {
+    "id": "tf-551",
+    "path": ["DevOps", "Terraform", "Refactoring"],
+    "type": "concept",
+    "question": "What arguments does the `moved` block take, and which are required?",
+    "answer": "Two: `from` (the resource's previous address) and `to` (its new address). Both are required.",
+    "tags": ["moved", "config-language"]
+  },
+  {
+    "id": "tf-552",
+    "path": ["DevOps", "Terraform", "Refactoring"],
+    "type": "concept",
+    "question": "When Terraform sees a `moved` block, what does it do and in what order, and why is the resource not destroyed?",
+    "answer": "Before creating the plan, it checks state for an existing object at the `from` address and renames it to the `to` address in state. Only then does it build the plan. The plan therefore sees the resource already at its new address, so there is no destroy/create.",
+    "tags": ["moved", "state", "plan"]
+  },
+  {
+    "id": "tf-553",
+    "path": ["DevOps", "Terraform", "Refactoring"],
+    "type": "applied",
+    "question": "You rename `aws_instance.a` to `aws_instance.b` in config. What does the plan show without the block below, and with it?\n```hcl\nmoved {\n  from = aws_instance.a\n  to   = aws_instance.b\n}\n```",
+    "answer": "Without `moved`: the old address is no longer in config, so the plan destroys `aws_instance.a` and creates a new `aws_instance.b`. With `moved`: the state entry is renamed first, so the real instance is kept and no destroy/create is planned.",
+    "tags": ["moved", "plan", "destroy"]
+  },
+  {
+    "id": "tf-554",
+    "path": ["DevOps", "Terraform", "Refactoring"],
+    "type": "concept",
+    "question": "What can an address in a `moved` block's `from` or `to` select?",
+    "answer": "Modules, resources, and resources inside child modules. It is not limited to a simple resource rename.",
+    "tags": ["moved", "modules"]
+  },
+  {
+    "id": "tf-555",
+    "path": ["DevOps", "Terraform", "Refactoring"],
+    "type": "concept",
+    "question": "The docs list `from`/`to` as type `string` in one place and `reference` in another. How do you actually write them in a `moved` block?",
+    "answer": "As bare addresses (references), not quoted strings, e.g. `from = aws_instance.a`.",
+    "tags": ["moved", "syntax"]
+  },
+  {
+    "id": "tf-556",
+    "path": ["DevOps", "Terraform", "Refactoring"],
+    "type": "concept",
+    "question": "Can a `moved` block relocate a resource from one configuration (state file) to a different one? Would `terraform_remote_state` help?",
+    "answer": "No. `moved` renames objects within a single state. `terraform_remote_state` does not help either: it only reads another configuration's outputs and cannot transfer resource ownership.",
+    "tags": ["moved", "remote-state", "state"]
+  },
+  {
+    "id": "tf-557",
+    "path": ["DevOps", "Terraform", "Refactoring"],
+    "type": "concept",
+    "question": "What is the declarative way to move a resource from config A to config B, and which side do you do first?",
+    "answer": "In B, add the resource block plus an `import` block (`to` = address, `id` = real-world ID) and apply. Then in A, replace the resource block with a `removed` block using `lifecycle { destroy = false }` and apply. Do B first so the object is never unmanaged, and check A's plan says it is being removed from state, not destroyed.",
+    "tags": ["import", "removed", "state"]
+  },
+  {
+    "id": "tf-558",
+    "path": ["DevOps", "Terraform", "Refactoring"],
+    "type": "applied",
+    "question": "What does this block do, and how does it differ from simply deleting the resource block from config?\n```hcl\nremoved {\n  from = aws_s3_bucket.logs\n\n  lifecycle {\n    destroy = false\n  }\n}\n```",
+    "answer": "It makes Terraform forget the resource: it is dropped from state and the real bucket keeps running. Deleting the resource block the normal way is destroy-by-default, so the plan would destroy the real bucket.",
+    "tags": ["removed", "destroy", "state"]
+  },
+  {
+    "id": "tf-559",
+    "path": ["DevOps", "Terraform", "Refactoring"],
+    "type": "applied",
+    "question": "You import a resource into config B but never add a `removed` block in config A. What state are you in, and what goes wrong later?",
+    "answer": "Both configs now track the same real object, and Terraform gives no warning (A's plan usually shows no changes). Later: each config's applies look like drift to the other and they overwrite each other, and a `destroy` (or block deletion) in A destroys the real object, leaving B's state pointing at something gone so B's next plan wants to recreate it.",
+    "tags": ["import", "removed", "drift"]
+  },
+  {
+    "id": "tf-560",
+    "path": ["DevOps", "Terraform", "Refactoring"],
+    "type": "concept",
+    "question": "What is the imperative alternative for moving a resource between two state files, and what extra step do remote backends need?",
+    "answer": "`terraform state mv -state-out=<path-to-other-state> <from> <to>`. It is simplest with local state. With remote backends you typically `terraform state pull` both states, do the move locally, then `terraform state push` them back, which is more error-prone than import + removed.",
+    "tags": ["state-mv", "cli", "state"]
+  },
+  {
+    "id": "tf-561",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "Where does `terraform_remote_state` actually fit when resources are split across configs?",
+    "answer": "After a move, if config B owns a resource that config A's other resources depend on, A can read B's outputs via `terraform_remote_state`. It handles cross-config dependencies, not relocation of resources.",
+    "tags": ["remote-state", "outputs"]
+  },
+  {
+    "id": "tf-562",
+    "path": ["DevOps", "Terraform", "State"],
+    "type": "concept",
+    "question": "Can one real resource be managed by two configs? Is it a good idea?",
+    "answer": "Technically yes: state is per-config and there is no cross-state locking or ownership check. It is strongly discouraged because each config assumes it is the sole owner, causing drift fights and destroy hazards. The legitimate pattern is different resource types attached to one parent (e.g. a bucket plus a separate policy resource), each config managing distinct attributes, subject to provider docs.",
+    "tags": ["ownership", "drift", "best-practice"]
   }
 ]
