@@ -4062,5 +4062,189 @@
     "question": "In a remove-and-import migration, what state is the resource in between the source apply and the destination apply, and how do you handle that gap?",
     "answer": "Managed by no state at all: the source has dropped it and the destination hasn't imported it yet. Run the two applies back to back, and don't let CI or teammates apply either config in between.",
     "tags": ["migration", "workflow", "risk"]
+  },
+  {
+    "id": "tf-509",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs"],
+    "type": "concept",
+    "question": "What is the default run mode in HCP Terraform, and when does a successful plan apply without waiting for user confirmation?",
+    "answer": "Plan and apply (standard): plan, then apply. If auto-apply is enabled and the run comes from a VCS or API workflow, a successful plan applies immediately; otherwise the run waits for confirmation. VCS-connected workspaces start a standard run automatically on new commits to the selected branch.",
+    "tags": ["auto-apply", "vcs"]
+  },
+  {
+    "id": "tf-510",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs"],
+    "type": "concept",
+    "question": "What does destroy mode do in an HCP Terraform run, and how do you trigger it via the API and the UI?",
+    "answer": "It plans the destruction of all objects, regardless of configuration changes. API: the `is-destroy` option. UI: it is NOT a run type under **+ New run**; use the workspace's **Destruction and Deletion** settings page. CLI: `terraform plan -destroy` or `terraform destroy`.",
+    "tags": ["destroy", "ui", "api"]
+  },
+  {
+    "id": "tf-511",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Speculative plans"],
+    "type": "concept",
+    "question": "What is a speculative (plan-only) plan in HCP Terraform, and what can you never do with it?",
+    "answer": "It shows a set of possible changes and checks them against Sentinel policies, but Terraform can never apply it.",
+    "tags": ["speculative-plan", "sentinel"]
+  },
+  {
+    "id": "tf-512",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Speculative plans"],
+    "type": "concept",
+    "question": "How do speculative plans interact with the workspace run queue, and how can one use a different Terraform version than the workspace?",
+    "answer": "They ignore the per-workspace run queue: they can run while another run is in progress, can't become the workspace's current run, and block nothing. They can use a different Terraform version than the workspace's (API: `plan-only` = true plus the `terraform-version` field), so you can test compatibility with a newer version without changing workspace settings.",
+    "tags": ["speculative-plan", "run-queue", "versions"]
+  },
+  {
+    "id": "tf-513",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Speculative plans"],
+    "type": "concept",
+    "question": "In a VCS-connected workspace, which event triggers a standard plan-and-apply and which triggers a speculative plan?",
+    "answer": "New commits to the selected branch start a standard plan and apply. Opening a pull request (or merge request) against that branch starts a speculative plan, which is linked from the PR/MR view and also appears in the workspace's run list.",
+    "tags": ["vcs", "pull-request"]
+  },
+  {
+    "id": "tf-514",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Saved plans"],
+    "type": "concept",
+    "question": "Name the three ways a saved plan run differs from a standard plan-and-apply run in HCP Terraform.",
+    "answer": "1) No wait for planning: planning and checks ignore the per-workspace run queue, so it can plan while another run is in progress. 2) No auto-apply: it is never auto-applied, even if the workspace has auto-apply on; it only applies if you confirm it. 3) Automatic discard of stale plans: if another run applies (or state is otherwise modified) before confirmation, the saved plan is discarded.",
+    "tags": ["saved-plan", "run-queue", "auto-apply"]
+  },
+  {
+    "id": "tf-515",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Saved plans"],
+    "type": "concept",
+    "question": "When does HCP Terraform automatically discard a saved plan?",
+    "answer": "When another run is applied (or the state is otherwise modified) before the saved plan is confirmed, since the plan is now stale. It may also discard saved plans that are not confirmed within a few weeks.",
+    "tags": ["saved-plan", "state"]
+  },
+  {
+    "id": "tf-516",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Saved plans"],
+    "type": "concept",
+    "question": "A workspace has auto-apply enabled. What happens to a saved plan run created in that workspace, and what is the exact nuance in the wording?",
+    "answer": "The workspace's auto-apply setting never applies it: saved plan runs are never auto-applied and only apply once you confirm them. The docs say \"confirm\", not that a human must click, so the point is that confirmation is a separate explicit step the auto-apply setting can't substitute for.",
+    "tags": ["saved-plan", "auto-apply"]
+  },
+  {
+    "id": "tf-517",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Saved plans"],
+    "type": "applied",
+    "question": "What role does each command play in a saved-plan workflow against HCP Terraform, and what is the minimum CLI version?\n```bash\nterraform plan -out tfplan\nterraform show tfplan\nterraform apply tfplan\n```",
+    "answer": "`plan -out tfplan` performs and saves the plan, `show tfplan` inspects it before applying, and `apply tfplan` applies the saved plan. Saved plans from the CLI with HCP Terraform require at least Terraform CLI v1.6.0.",
+    "tags": ["saved-plan", "cli", "versions"]
+  },
+  {
+    "id": "tf-518",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Saved plans"],
+    "type": "concept",
+    "question": "Which API options are involved in creating a saved plan run, and what is the purpose of the second one?",
+    "answer": "`save-plan` when creating the run. If you create a new configuration version for a saved plan run, also use `provisional`, so that configuration version does not become the workspace's current one until you decide to apply the run.",
+    "tags": ["saved-plan", "api"]
+  },
+  {
+    "id": "tf-519",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Allow empty apply"],
+    "type": "concept",
+    "question": "What is an allow-empty-apply run in HCP Terraform, what is it for, and how does it behave when the plan has no changes?",
+    "answer": "It applies a run from a plan that contains no infrastructure changes so Terraform can upgrade the state version during apply. Its use is upgrading a workspace's state to a new Terraform version. Empty apply runs always auto-apply if their plan contains no changes. API: `allow-empty-apply` = true; UI: **+ New run** then **Allow empty apply**.",
+    "tags": ["empty-apply", "state", "auto-apply"]
+  },
+  {
+    "id": "tf-520",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Allow empty apply"],
+    "type": "concept",
+    "question": "Which Terraform version is most notably associated with needing an empty apply, and what warning applies to this mode?",
+    "answer": "Only some versions require it, most notably 0.13. HCP Terraform cannot guarantee a plan in this mode will produce no changes, so check the plan for drift before proceeding to the apply stage.",
+    "tags": ["empty-apply", "drift", "versions"]
+  },
+  {
+    "id": "tf-521",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Refresh-only"],
+    "type": "concept",
+    "question": "What does refresh-only mode do, and what does applying a refresh-only run change?",
+    "answer": "It plans an update of the Terraform state to match changes made to remote objects outside Terraform, which is useful for reconciling state drift. Applying it changes only the state; it results in no further changes to remote objects.",
+    "tags": ["refresh-only", "drift", "state"]
+  },
+  {
+    "id": "tf-522",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Refresh-only"],
+    "type": "concept",
+    "question": "For refresh-only runs, give the minimum Terraform CLI version, the CLI commands, the API option, and the UI run type name.",
+    "answer": "Minimum v0.15.4. CLI: `terraform plan -refresh-only` or `terraform apply -refresh-only`. API: the `refresh-only` option. UI: **+ New run** then **Refresh state** (the UI name differs from \"refresh-only\").",
+    "tags": ["refresh-only", "versions", "ui"]
+  },
+  {
+    "id": "tf-523",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Refresh"],
+    "type": "concept",
+    "question": "How do you skip the automatic state refresh in an HCP Terraform run, and where is this available?",
+    "answer": "`-refresh=false` skips the default behavior of refreshing state before checking for configuration changes in normal planning mode. CLI: `terraform plan -refresh=false` or `terraform apply -refresh=false`. API: the `refresh` option. The page lists no UI option for it.",
+    "tags": ["refresh", "cli", "api"]
+  },
+  {
+    "id": "tf-524",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Replace"],
+    "type": "concept",
+    "question": "How do you replace a specific resource in an HCP Terraform run (CLI, API, UI), and what is the minimum version?",
+    "answer": "Minimum Terraform CLI v0.15.2. CLI: `-replace=ADDRESS` on plan or apply. API: `replace-addrs`. UI: **+ New run**, choose **Plan and apply (standard)**, click **Additional planning options**, then use **Replace resources** and type the address; multiple resources are allowed.",
+    "tags": ["replace", "versions", "ui"]
+  },
+  {
+    "id": "tf-525",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Targeting"],
+    "type": "concept",
+    "question": "What two HCP Terraform features are limited for remote plans created with `-target`, and how?",
+    "answer": "Sentinel policy checks see only the targeted subset of resource instances planned for changes (via the `tfplan` and `tfplan/v2` imports), which can cause unintended failures for policies that require a change to a particular instance. Cost estimation is disabled for any run with a target set, to avoid a misleading underestimate.",
+    "tags": ["target", "sentinel", "cost-estimation"]
+  },
+  {
+    "id": "tf-526",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Targeting"],
+    "type": "concept",
+    "question": "How is targeting meant to be used, how do you request it via the API, and how can you restrict it in a workspace?",
+    "answer": "It's for exceptional circumstances only, not routine use. API: `target-addrs`; CLI: `-target=ADDRESS`. To disable or constrain it in a workspace, use a Sentinel policy based on the `tfrun.target_addrs` value.",
+    "tags": ["target", "sentinel", "api"]
+  },
+  {
+    "id": "tf-527",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Generating configuration"],
+    "type": "concept",
+    "question": "What does generating configuration do, what is its minimum version, and where is it enabled by default?",
+    "answer": "When using `import` blocks, Terraform can auto-generate configuration during plan for imported resources that lack a `resource` block. Requires at least Terraform CLI v1.5.0. It is on by default for runs started from the UI or a VCS webhook; in the CLI use `terraform plan -generate-config-out=generated.tf`, and in the API use `allow-config-generation`.",
+    "tags": ["import", "generate-config", "versions"]
+  },
+  {
+    "id": "tf-528",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs", "Generating configuration"],
+    "type": "applied",
+    "question": "You ran this and Terraform generated configuration. Can you apply that plan directly, and what must you do first?\n```bash\nterraform plan -generate-config-out=generated.tf\n```",
+    "answer": "No. Directly applying a plan that contains generated configuration makes the run error. Review the generated config, incorporate it into your configuration (including committing it to version control), then run another plan.",
+    "tags": ["import", "generate-config", "cli"]
+  },
+  {
+    "id": "tf-529",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs"],
+    "type": "concept",
+    "question": "Give the HCP Terraform API option for each run mode: destroy, plan-only, saved plan, allow empty apply, refresh-only.",
+    "answer": "Destroy: `is-destroy`. Plan-only: `plan-only` (with `terraform-version` to pick a version). Saved plan: `save-plan` (with `provisional` for new configuration versions). Allow empty apply: `allow-empty-apply`. Refresh-only: `refresh-only`.",
+    "tags": ["api", "run-modes"]
+  },
+  {
+    "id": "tf-530",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs"],
+    "type": "concept",
+    "question": "Give the HCP Terraform API option for each of these: skip state refresh, replace resources, target resources, generate configuration.",
+    "answer": "Skip refresh: `refresh` (set to false). Replace: `replace-addrs`. Target: `target-addrs`. Generate configuration: `allow-config-generation`.",
+    "tags": ["api", "run-options"]
+  },
+  {
+    "id": "tf-531",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Runs"],
+    "type": "concept",
+    "question": "Which run modes appear as run types under **+ New run** in the HCP Terraform UI, and where does destroy live instead?",
+    "answer": "Run types: **Plan and apply (standard)**, **Plan only**, **Allow empty apply**, and **Refresh state** (refresh-only). Replace is under **Additional planning options** of a standard run. Destroy is not a run type; it is on the workspace's **Destruction and Deletion** settings page. Target and skip-refresh have no UI option on this page.",
+    "tags": ["ui", "run-modes"]
   }
 ]
