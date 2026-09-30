@@ -4246,5 +4246,157 @@
     "question": "Which run modes appear as run types under **+ New run** in the HCP Terraform UI, and where does destroy live instead?",
     "answer": "Run types: **Plan and apply (standard)**, **Plan only**, **Allow empty apply**, and **Refresh state** (refresh-only). Replace is under **Additional planning options** of a standard run. Destroy is not a run type; it is on the workspace's **Destruction and Deletion** settings page. Target and skip-refresh have no UI option on this page.",
     "tags": ["ui", "run-modes"]
+  },
+  {
+    "id": "tf-532",
+    "path": ["DevOps","Terraform","Blocks","removed"],
+    "type": "concept",
+    "question": "What does a `removed` block do, and which argument is required?",
+    "answer": "It tells Terraform to remove a resource from state, so Terraform stops managing the real infrastructure that resource represented. The required argument is `from`, a string holding the resource address in `<TYPE>.<NAME>` form (e.g. `aws_instance.example`). Whether the real resource is also destroyed is controlled by `lifecycle { destroy = ... }`.",
+    "tags": ["state","addressing"]
+  },
+  {
+    "id": "tf-533",
+    "path": ["DevOps","Terraform","Blocks","removed"],
+    "type": "concept",
+    "question": "In a `removed` block, what is the only supported `lifecycle` argument, what happens by default, and what does setting it to `false` do?",
+    "answer": "`destroy` (boolean) is the only supported `lifecycle` argument. By default Terraform removes the resource from state AND destroys the real resource. With `destroy = false` it removes the resource from state only and leaves the real resource running, which is useful for handing management to another tool or team after Terraform did the initial provisioning. `lifecycle` is a meta-argument.",
+    "tags": ["lifecycle","state"]
+  },
+  {
+    "id": "tf-534",
+    "path": ["DevOps","Terraform","Blocks","removed"],
+    "type": "applied",
+    "question": "You delete `resource \"aws_s3_bucket\" \"logs\"` from your config and add this block. What happens to the bucket and to state on the next apply, and what changes if `destroy` is `true`?\n```hcl\nremoved {\n  from = aws_s3_bucket.logs\n\n  lifecycle {\n    destroy = false\n  }\n}\n```",
+    "answer": "The `aws_s3_bucket.logs` entry is removed from state, but the real bucket is left untouched and keeps running. Terraform simply stops managing it, so another tool or team can take over. With `destroy = true`, Terraform would also destroy the actual bucket.",
+    "tags": ["lifecycle","state"]
+  },
+  {
+    "id": "tf-535",
+    "path": ["DevOps","Terraform","Blocks","removed","Provisioners"],
+    "type": "concept",
+    "question": "Which provisioner timing is supported inside a `removed` block, and which argument is required before any other provisioner argument can be used?",
+    "answer": "Only destroy-time provisioners are supported in `removed` blocks. The `when` argument (set to `destroy`) is required on the nested `provisioner` block, and it is needed to configure any other provisioner argument.",
+    "tags": ["provisioners","destroy-time"]
+  },
+  {
+    "id": "tf-536",
+    "path": ["DevOps","Terraform","Blocks","removed","Provisioners"],
+    "type": "applied",
+    "question": "This `removed` block is invalid. What is missing?\n```hcl\nremoved {\n  from = aws_instance.example\n\n  lifecycle {\n    destroy = true\n  }\n\n  provisioner \"local-exec\" {\n    command = \"echo 'Instance ${self.id} has been destroyed.'\"\n  }\n}\n```",
+    "answer": "The provisioner has no `when = destroy`. In a `removed` block `when` is required (only destroy-time provisioners are supported) and is needed to use any other provisioner argument. The `self.id` reference is already correct, since provisioners nested in a `removed` block use `self`. Fix: add `when = destroy` inside the `provisioner` block.",
+    "tags": ["provisioners","local-exec","self"]
+  },
+  {
+    "id": "tf-537",
+    "path": ["DevOps","Terraform","Blocks","removed","Provisioners"],
+    "type": "concept",
+    "question": "In a `removed` block, where does each provisioner type run, and which arguments does each accept?",
+    "answer": "`local-exec` runs on the machine where Terraform is running and accepts `command`, `working_dir`, `interpreter`, `environment`, `quiet`. `remote-exec` runs on the resource being removed and accepts `inline`, `script`, `scripts`. Arguments common to all types: `when` (required), `connection`, and `on_failure`.",
+    "tags": ["provisioners","local-exec","remote-exec"]
+  },
+  {
+    "id": "tf-538",
+    "path": ["DevOps","Terraform","Blocks","removed","Provisioners"],
+    "type": "concept",
+    "question": "For a `remote-exec` provisioner, what do `inline`, `script` and `scripts` each take, and which shell runs `inline` commands?",
+    "answer": "`inline` is a list of command strings. `script` is a single path (string) to a local script that Terraform copies to the remote resource and executes. `scripts` is a list of such paths. `inline` runs in the remote resource's default shell unless the first command names one (e.g. `#!/bin/bash`). The three arguments are mutually exclusive.",
+    "tags": ["provisioners","remote-exec"]
+  },
+  {
+    "id": "tf-539",
+    "path": ["DevOps","Terraform","Blocks","removed","Provisioners"],
+    "type": "applied",
+    "question": "Is this provisioner valid? Why or why not?\n```hcl\nprovisioner \"remote-exec\" {\n  when   = destroy\n  inline = [\"sudo systemctl stop app\"]\n  script = \"./cleanup.sh\"\n}\n```",
+    "answer": "Invalid. `inline`, `script` and `scripts` cannot be combined in the same provisioner. Use only one of them per provisioner block.",
+    "tags": ["provisioners","remote-exec"]
+  },
+  {
+    "id": "tf-540",
+    "path": ["DevOps","Terraform","Blocks","removed","Provisioners"],
+    "type": "concept",
+    "question": "Inside a provisioner or `connection` block nested in a `removed` block, how do you reference attributes of the resource being removed, and why not use its resource address?",
+    "answer": "Use the `self` object (e.g. `self.public_ip`, `self.id`). References create dependencies, so referring to the parent resource by its resource address inside its own block would create a dependency cycle.",
+    "tags": ["self","dependencies"]
+  },
+  {
+    "id": "tf-541",
+    "path": ["DevOps","Terraform","Blocks","removed","Connection"],
+    "type": "concept",
+    "question": "Where can a `connection` block be placed in a `removed` block, and how does its scope differ by placement?",
+    "answer": "Either directly in the `removed` block, where it sets default connection settings for all provisioners of the resource being removed, or inside a specific `provisioner` block, where it defines settings for that provisioner only.",
+    "tags": ["connection","provisioners"]
+  },
+  {
+    "id": "tf-542",
+    "path": ["DevOps","Terraform","Blocks","removed","Connection"],
+    "type": "concept",
+    "question": "By default, does Terraform validate SSH host keys in a `connection` block, and how do you enable validation?",
+    "answer": "No. SSH host keys are not validated by default. Set `host_key` to the remote host's public key or to a signing CA's public key, and set up a separate mechanism for distributing that key.",
+    "tags": ["ssh","security"]
+  },
+  {
+    "id": "tf-543",
+    "path": ["DevOps","Terraform","Blocks","removed","Connection"],
+    "type": "concept",
+    "question": "What are the `connection` defaults for `type`, `user`, `port` and `timeout`, and is `host` optional?",
+    "answer": "`type` = `ssh` (the alternative is `winrm`). `user` = `root` for ssh, `Administrator` for winrm. `port` = `22` for ssh, `5985` for winrm. `timeout` = `\"5m\"`. `host` is required and has no default.",
+    "tags": ["ssh","winrm","defaults"]
+  },
+  {
+    "id": "tf-544",
+    "path": ["DevOps","Terraform","Blocks","removed","Connection"],
+    "type": "concept",
+    "question": "What is the default `script_path` in a `connection` block, and how does `target_platform` change it?",
+    "answer": "`target_platform` defaults to `unix`, giving `/tmp/terraform_%RAND%.sh`. With `windows` (when the remote SSH default shell is `cmd.exe`) the default becomes `C:/windows/temp/terraform_%RAND%.cmd`. If the SSH default shell is PowerShell, set `script_path` explicitly to `\"c:/windows/temp/terraform_%RAND%.ps1\"`. Note that `type = \"winrm\"` triggers Windows-specific provisioner behavior even when `target_platform` is `unix`.",
+    "tags": ["ssh","winrm","defaults"]
+  },
+  {
+    "id": "tf-545",
+    "path": ["DevOps","Terraform","Blocks","removed","Connection"],
+    "type": "concept",
+    "question": "For SSH `connection` authentication: which wins when both `password` and `private_key` are set, what must accompany `certificate`, and how do you load key material from disk?",
+    "answer": "`private_key` takes precedence over `password`. `certificate` (signed CA certificate contents) requires `private_key` to be configured as well. Load key and certificate contents from files with the `file()` function. The `agent` argument defaults to `false`; on Windows the only supported SSH agent is Pageant.",
+    "tags": ["ssh","authentication"]
+  },
+  {
+    "id": "tf-546",
+    "path": ["DevOps","Terraform","Blocks","removed","Connection"],
+    "type": "concept",
+    "question": "Which `connection` arguments apply only to WinRM, and what do they do?",
+    "answer": "`https` connects over HTTPS instead of HTTP, `insecure` skips HTTPS certificate chain validation, and `use_ntlm` uses NTLM instead of basic authentication (so basic auth doesn't need to be enabled on the guest). All three default to `false`. `cacert` specifies the CA certificate to validate against and has no default.",
+    "tags": ["winrm","authentication"]
+  },
+  {
+    "id": "tf-547",
+    "path": ["DevOps","Terraform","Blocks","removed","Connection"],
+    "type": "concept",
+    "question": "When `proxy_host` and `bastion_host` are both configured, in what order does the connection hop, and which bastion settings fall back to the main connection values?",
+    "answer": "Proxy host first, then the bastion host, then the target `host`. Without a bastion it goes proxy, then `host`. `bastion_port`, `bastion_user`, `bastion_password`, `bastion_private_key` and `bastion_certificate` default to the values of `port`, `user`, `password`, `private_key` and `certificate`. `proxy_scheme` accepts `http`, `https` or `socks5`, and `proxy_user_name` / `proxy_user_password` should be set only when the proxy requires authentication.",
+    "tags": ["ssh","bastion","proxy"]
+  },
+  {
+    "id": "tf-548",
+    "path": ["DevOps","Terraform","Blocks","removed","Provisioners"],
+    "type": "concept",
+    "question": "Why is interpolating Terraform variables directly into a `local-exec` `command` discouraged, and what should you do instead?",
+    "answer": "The command is evaluated in a local shell, so interpolated Terraform values can lead to shell injection vulnerabilities. Pass values through the `environment` block and use environment-variable substitution in the command instead.",
+    "tags": ["local-exec","security"]
+  },
+  {
+    "id": "tf-549",
+    "path": ["DevOps","Terraform","Blocks","removed","Provisioners"],
+    "type": "concept",
+    "question": "In a `local-exec` provisioner, what do `working_dir` and `interpreter` accept, and what happens if `interpreter` is omitted?",
+    "answer": "`working_dir` takes a relative (to the current working directory) or absolute path, and the directory must already exist. `interpreter` is a list whose first element is the interpreter's path (relative or absolute), followed by its arguments. If it is omitted, Terraform uses operating-system defaults. `command` (an absolute or relative path to a local executable) is required.",
+    "tags": ["local-exec"]
+  },
+  {
+    "id": "tf-550",
+    "path": ["DevOps","Terraform","Blocks","removed","Connection"],
+    "type": "concept",
+    "question": "Can arguments in a `connection` block use ephemeral values?",
+    "answer": "Yes. Ephemeral values are allowed for arguments in the `connection` block (refer to the Manage sensitive data docs).",
+    "tags": ["ephemeral","sensitive-data"]
   }
 ]
