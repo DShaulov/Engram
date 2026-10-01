@@ -4702,5 +4702,85 @@
     "question": "How do you rename or otherwise move a resource after it has been imported?",
     "answer": "Use the state management commands (such as `terraform state mv`) to change its address in state, instead of re-importing it.",
     "tags": ["import", "state", "cli"]
+  },
+  {
+    "id": "tf-589",
+    "path": ["DevOps", "Terraform", "State", "CLI"],
+    "type": "concept",
+    "question": "What are the `terraform state` commands for, and how should you use them instead of the alternative?",
+    "answer": "They are the supported way to perform advanced state management: you modify state through these commands rather than editing the state file directly.",
+    "tags": ["state", "cli"]
+  },
+  {
+    "id": "tf-590",
+    "path": ["DevOps", "Terraform", "State", "CLI"],
+    "type": "concept",
+    "question": "What is the general syntax of the state command group, and what are its six subcommands?",
+    "answer": "`terraform state <subcommand> [options] [args]`\n\nSubcommands: `list`, `mv`, `pull`, `replace-provider`, `rm`, `show`.",
+    "tags": ["state", "cli"]
+  },
+  {
+    "id": "tf-591",
+    "path": ["DevOps", "Terraform", "State", "CLI"],
+    "type": "concept",
+    "question": "Do `terraform state` subcommands work with remote state? What, if anything, is different compared to local state?",
+    "answer": "Yes, they work with remote state exactly as with local state, and the CLI usage is the same. The only difference is speed: each read and each write is a full network roundtrip, so operations may take longer. Backups are still written to disk.",
+    "tags": ["state", "remote-state", "cli"]
+  },
+  {
+    "id": "tf-592",
+    "path": ["DevOps", "Terraform", "State", "CLI"],
+    "type": "concept",
+    "question": "Which `terraform state` subcommands write backup files, and which don't?",
+    "answer": "Every subcommand that modifies state writes a backup file. Read-only subcommands, such as `list`, write none because they don't modify the state.",
+    "tags": ["state", "backups"]
+  },
+  {
+    "id": "tf-593",
+    "path": ["DevOps", "Terraform", "State", "CLI"],
+    "type": "concept",
+    "question": "Can you disable the backup file written by a state-modifying `terraform state` command? What can you control, and how do you get rid of the files?",
+    "answer": "No. Backups for state modification cannot be disabled: because state is sensitive, Terraform forces every state-modifying command to write one. You can only change the backup file's path with `-backup`. To get rid of the files, you must delete them manually.",
+    "tags": ["state", "backups", "cli"]
+  },
+  {
+    "id": "tf-594",
+    "path": ["DevOps", "Terraform", "State", "CLI"],
+    "type": "applied",
+    "question": "Your state lives in a remote backend (e.g. S3). You run:\n```bash\nterraform state rm aws_instance.web\n```\nIs a backup written, and if so, where?",
+    "answer": "Yes. `state rm` modifies state, so a backup is forced. Even with remote state, backups are still written to disk (locally), and the path can be changed with `-backup`.",
+    "tags": ["state", "remote-state", "backups"]
+  },
+  {
+    "id": "tf-595",
+    "path": ["DevOps", "Terraform", "State", "CLI"],
+    "type": "applied",
+    "question": "What does this command do to your real infrastructure?\n```bash\nterraform state rm aws_instance.web\n```",
+    "answer": "Nothing to the real instance. It only removes the resource from Terraform's state, so Terraform stops tracking it. It writes a backup because it modifies state.",
+    "tags": ["state", "cli"]
+  },
+  {
+    "id": "tf-596",
+    "path": ["DevOps", "Terraform", "State", "CLI"],
+    "type": "applied",
+    "question": "What does this do, and does it write a backup file?\n```bash\nterraform state list | grep aws_s3_bucket\n```",
+    "answer": "It lists the resource addresses in state and filters them to those matching `aws_s3_bucket`. It is read-only, so no backup is written. It works because state subcommand output is designed for Unix tools like `grep` and `awk`.",
+    "tags": ["state", "cli", "unix-tools"]
+  },
+  {
+    "id": "tf-597",
+    "path": ["DevOps", "Terraform", "State", "CLI"],
+    "type": "concept",
+    "question": "In one line each, what do the six `terraform state` subcommands do?",
+    "answer": "- `list`: lists resources in state\n- `show`: displays the attributes of a single resource\n- `pull`: outputs the raw current state\n- `mv`: moves or renames an item in state\n- `rm`: removes an item from state without destroying the real infrastructure\n- `replace-provider`: replaces a provider in state",
+    "tags": ["state", "cli"]
+  },
+  {
+    "id": "tf-598",
+    "path": ["DevOps", "Terraform", "State", "CLI"],
+    "type": "concept",
+    "question": "How are the `terraform state` subcommands designed to fit into command-line workflows, and what approach is recommended for advanced filtering or modification?",
+    "answer": "Their output and command structure are designed to work with Unix command-line tools such as `grep` and `awk` (and similar PowerShell commands). For advanced filtering and modification, pipe the state subcommands together with other command-line tools.",
+    "tags": ["state", "cli", "unix-tools"]
   }
 ]
