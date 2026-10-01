@@ -4614,5 +4614,93 @@
     "question": "Which `terraform import` options apply only to specific backends?",
     "answer": "- `-ignore-remote-version`: only for the HCP Terraform CLI integration or the `remote` backend.\n- `-state`, `-state-out`, `-backup` (legacy options): only for the **local** backend.",
     "tags": ["import", "backends", "flags"]
+  },
+  {
+    "id": "tf-578",
+    "path": ["DevOps", "Terraform", "Import", "Usage"],
+    "type": "concept",
+    "question": "How many resources can a single `terraform import` run bring into state, and can it import an entire collection such as an AWS VPC with everything inside it?",
+    "answer": "One resource at a time. It cannot import a whole collection (like a VPC and all its contents) in one go.",
+    "tags": ["import", "cli"]
+  },
+  {
+    "id": "tf-579",
+    "path": ["DevOps", "Terraform", "Import", "Usage"],
+    "type": "concept",
+    "question": "What are the two steps of the CLI import workflow, and which must come first?",
+    "answer": "1) Add a `resource` block for the object to your configuration. 2) Run `terraform import`. The block comes first because import needs a target address to attach the object to. Import only writes state; it does not generate configuration.",
+    "tags": ["import", "workflow"]
+  },
+  {
+    "id": "tf-580",
+    "path": ["DevOps", "Terraform", "Import", "Usage"],
+    "type": "concept",
+    "question": "Must the `resource` block you write before importing be complete?",
+    "answer": "No. The body can be empty or partial, and you finish the arguments after the import. The name you give the block is the unique ID used to reference the resource elsewhere in the configuration. Caveat: missing required arguments will still fail validation on plan, so complete the block before you apply.",
+    "tags": ["import", "config"]
+  },
+  {
+    "id": "tf-581",
+    "path": ["DevOps", "Terraform", "Import", "Usage"],
+    "type": "applied",
+    "question": "Given this config and command, what exactly happens?\n```hcl\nresource \"aws_instance\" \"example\" {\n  # ...instance configuration...\n}\n```\n```bash\nterraform import aws_instance.example i-abcd1234\n```",
+    "answer": "Terraform locates the EC2 instance with ID `i-abcd1234`, attaches its existing settings (as described by the EC2 API) to `aws_instance.example` in the root module (no module path in the address means root), and saves that mapping in state. The real instance and your config are not modified.",
+    "tags": ["import", "state", "aws"]
+  },
+  {
+    "id": "tf-582",
+    "path": ["DevOps", "Terraform", "Import", "Usage"],
+    "type": "concept",
+    "question": "After `terraform import` records the resource in state, what should you run next and why?",
+    "answer": "`terraform plan`, to see how your configuration compares to the imported object. Then adjust the configuration to align with the current (or desired) state of the object.",
+    "tags": ["import", "plan"]
+  },
+  {
+    "id": "tf-583",
+    "path": ["DevOps", "Terraform", "Import", "Usage"],
+    "type": "applied",
+    "question": "You imported a resource into a block that contains only its required arguments. `terraform plan` shows an optional argument (say `tags`) changing from its real value to `null`. What happens if you apply, and what should you have done instead?",
+    "answer": "Import never modifies config, so an omitted optional argument is treated as unset. Applying would reset or strip that setting on the real object. Instead, copy the real values into the config (from the plan diff or `terraform state show <address>`) until the plan shows no changes for that resource, then apply.",
+    "tags": ["import", "plan", "gotcha"]
+  },
+  {
+    "id": "tf-584",
+    "path": ["DevOps", "Terraform", "Import", "Usage"],
+    "type": "concept",
+    "question": "After importing into a partial block, why do some omitted arguments show a diff in the plan and others do not?",
+    "answer": "Omitted optional arguments that are not computed are treated as unset, so the plan shows a change from the real value to null or the default. Arguments that are both optional and computed keep their existing value, so no diff appears. Which attributes behave which way depends on the provider and resource.",
+    "tags": ["import", "plan", "provider"]
+  },
+  {
+    "id": "tf-585",
+    "path": ["DevOps", "Terraform", "Import", "Usage"],
+    "type": "concept",
+    "question": "What is the difference between a simple import and a complex import? Give the example from the docs.",
+    "answer": "Simple: one resource is imported into state. Complex: one import brings in multiple resources. Example: importing an AWS network ACL imports `aws_network_acl` plus one `aws_network_acl_rule` for each rule.",
+    "tags": ["import", "complex-import", "aws"]
+  },
+  {
+    "id": "tf-586",
+    "path": ["DevOps", "Terraform", "Import", "Usage"],
+    "type": "applied",
+    "question": "You import an AWS network ACL that has 4 rules. Your config contains only the `aws_network_acl` block. What will the next plan do, and how do you fix it?",
+    "answer": "It plans to destroy the 4 `aws_network_acl_rule` objects: they are in state (secondary resources of the complex import) but have no `resource` block in config. Fix: add a `resource` block for each secondary resource, then re-plan until there are no unexpected changes.",
+    "tags": ["import", "complex-import", "destroy"]
+  },
+  {
+    "id": "tf-587",
+    "path": ["DevOps", "Terraform", "Import", "Usage"],
+    "type": "concept",
+    "question": "After a complex import, how do you know which secondary resources need `resource` blocks?",
+    "answer": "Consult the import output, which lists everything that was imported, and create a `resource` block in configuration for each secondary resource. The secondary resources will not already exist in your config. (`terraform state list` also shows what is in state.)",
+    "tags": ["import", "complex-import"]
+  },
+  {
+    "id": "tf-588",
+    "path": ["DevOps", "Terraform", "Import", "Usage"],
+    "type": "concept",
+    "question": "How do you rename or otherwise move a resource after it has been imported?",
+    "answer": "Use the state management commands (such as `terraform state mv`) to change its address in state, instead of re-importing it.",
+    "tags": ["import", "state", "cli"]
   }
 ]
