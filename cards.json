@@ -4782,5 +4782,101 @@
     "question": "How are the `terraform state` subcommands designed to fit into command-line workflows, and what approach is recommended for advanced filtering or modification?",
     "answer": "Their output and command structure are designed to work with Unix command-line tools such as `grep` and `awk` (and similar PowerShell commands). For advanced filtering and modification, pipe the state subcommands together with other command-line tools.",
     "tags": ["state", "cli", "unix-tools"]
-  }
+  },
+  {
+    "id": "tf-599",
+    "path": ["DevOps","Terraform","Debugging"],
+    "type": "concept",
+    "question": "What does setting the `TF_LOG` environment variable do, and which stream does the output go to?",
+    "answer": "It enables Terraform's detailed logs (the docs say setting it to any value turns logging on). The logs are written to `stderr`, not `stdout`.",
+    "tags": ["logging","env-vars"]
+  },
+  {
+    "id": "tf-600",
+    "path": ["DevOps","Terraform","Debugging"],
+    "type": "concept",
+    "question": "List the `TF_LOG` log levels in order of decreasing verbosity. Which is the most verbose?",
+    "answer": "`TRACE` > `DEBUG` > `INFO` > `WARN` > `ERROR`. `TRACE` is the most verbose; `ERROR` is the quietest.",
+    "tags": ["logging","env-vars"]
+  },
+  {
+    "id": "tf-601",
+    "path": ["DevOps","Terraform","Debugging"],
+    "type": "concept",
+    "question": "What does `TF_LOG=JSON` do, and how does it relate to the normal log levels?",
+    "answer": "It outputs logs at `TRACE` level or higher (maximum detail) and formats them as parseable JSON. It is a format selector with TRACE-level verbosity, not an extra level sitting between the others.",
+    "tags": ["logging","json"]
+  },
+  {
+    "id": "tf-602",
+    "path": ["DevOps","Terraform","Debugging"],
+    "type": "concept",
+    "question": "What is the documented warning about the JSON log format produced by `TF_LOG=JSON`?",
+    "answer": "It is not a stable interface and may change at any time without warning. It exists to support forthcoming tooling, and that tooling is the only supported way to interact with JSON-formatted logs.",
+    "tags": ["logging","json","stability"]
+  },
+  {
+    "id": "tf-603",
+    "path": ["DevOps","Terraform","Debugging"],
+    "type": "concept",
+    "question": "What are `TF_LOG_CORE` and `TF_LOG_PROVIDER` for, and what values do they accept?",
+    "answer": "They enable logging separately for Terraform itself (`TF_LOG_CORE`) and for the provider plugins (`TF_LOG_PROVIDER`). They take the same level arguments as `TF_LOG` but each activates only its own subset of the logs.",
+    "tags": ["logging","env-vars","providers"]
+  },
+  {
+    "id": "tf-604",
+    "path": ["DevOps","Terraform","Debugging"],
+    "type": "concept",
+    "question": "What does `TF_LOG_PATH` do, and what other variable must be set for it to have any effect?",
+    "answer": "It forces the log to always be appended to the given file, which persists the output. `TF_LOG` must still be set: even with `TF_LOG_PATH` set, nothing is logged unless `TF_LOG` enables logging.",
+    "tags": ["logging","env-vars"]
+  },
+  {
+    "id": "tf-605",
+    "path": ["DevOps","Terraform","Debugging"],
+    "type": "applied",
+    "question": "You run:\n```bash\nexport TF_LOG_PATH=./tf.log\nterraform plan\n```\nWhat ends up in `tf.log`, and why?",
+    "answer": "Nothing. `TF_LOG` was never set, and `TF_LOG_PATH` alone does not enable logging. You need something like `export TF_LOG=DEBUG` as well.",
+    "tags": ["logging","env-vars","gotcha"]
+  },
+  {
+    "id": "tf-606",
+    "path": ["DevOps","Terraform","Debugging"],
+    "type": "applied",
+    "question": "You suspect a bug in a provider plugin and want its detailed logs without Terraform core's logs. Which variable do you set, and how?",
+    "answer": "Set `TF_LOG_PROVIDER` to a level, e.g. `export TF_LOG_PROVIDER=TRACE`, rather than `TF_LOG`. Each of `TF_LOG_CORE` and `TF_LOG_PROVIDER` activates only its own subset of the logs.",
+    "tags": ["logging","providers"]
+  },
+  {
+    "id": "tf-607",
+    "path": ["DevOps","Terraform","Debugging"],
+    "type": "applied",
+    "question": "You run this and open `plan.txt`. Will the debug logs be in it?\n```bash\nTF_LOG=DEBUG terraform plan > plan.txt\n```",
+    "answer": "No. Logs go to `stderr`, and `>` only redirects `stdout`, so the logs still print to the terminal. To capture them, redirect stderr (`2>`) or set `TF_LOG_PATH` to a file.",
+    "tags": ["logging","stderr","shell"]
+  },
+  {
+    "id": "tf-608",
+    "path": ["DevOps","Terraform","Debugging"],
+    "type": "applied",
+    "question": "A teammate writes a production log-analysis script that parses `TF_LOG=JSON` output directly. What is the problem with this?",
+    "answer": "The JSON log encoding is not a stable interface and may change at any time without warning, so the script can break. The only supported way to consume JSON logs is the forthcoming tooling built for that purpose.",
+    "tags": ["logging","json","stability"]
+  },
+  {
+    "id": "tf-609",
+    "path": ["DevOps","Terraform","Debugging"],
+    "type": "concept",
+    "question": "What do the docs ask you to include when reporting a Terraform bug, and how do they suggest sharing it?",
+    "answer": "Include the detailed log (generated with `TF_LOG`), shared through a service such as gist.",
+    "tags": ["logging","bug-report"]
+  },
+  {
+    "id": "tf-610",
+    "path": ["DevOps","Terraform","Debugging"],
+    "type": "applied",
+    "question": "You run `terraform plan` twice in a row with these set. What does `tf.log` contain afterwards?\n```bash\nexport TF_LOG=INFO\nexport TF_LOG_PATH=./tf.log\n```",
+    "answer": "Logs from both runs. `TF_LOG_PATH` appends to the file rather than overwriting it, so the second run's logs follow the first's.",
+    "tags": ["logging","env-vars"]
+  } 
 ]
