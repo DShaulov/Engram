@@ -4494,5 +4494,125 @@
     "question": "Can one real resource be managed by two configs? Is it a good idea?",
     "answer": "Technically yes: state is per-config and there is no cross-state locking or ownership check. It is strongly discouraged because each config assumes it is the sole owner, causing drift fights and destroy hazards. The legitimate pattern is different resource types attached to one parent (e.g. a bucket plus a separate policy resource), each config managing distinct attributes, subject to provider docs.",
     "tags": ["ownership", "drift", "best-practice"]
+  },
+  {
+    "id": "tf-563",
+    "path": ["DevOps", "Terraform", "Import"],
+    "type": "concept",
+    "question": "What does `terraform import [options] ADDRESS ID` do, and what is it NOT doing?",
+    "answer": "It finds the existing remote object from `ID` and records it in Terraform **state** at `ADDRESS`. It doesn't create or change the real infrastructure, and it doesn't write configuration for you - you still need a matching `resource` block.",
+    "tags": ["import", "state", "cli"]
+  },
+  {
+    "id": "tf-564",
+    "path": ["DevOps", "Terraform", "Import"],
+    "type": "concept",
+    "question": "What kind of value is valid for the `ADDRESS` argument of `terraform import`, and what does that allow?",
+    "answer": "Any valid resource address. Because every resource address is valid, you can import into a resource at the root of your state **or** into a resource inside a module (e.g. `module.foo.aws_instance.bar`).",
+    "tags": ["import", "addressing", "modules"]
+  },
+  {
+    "id": "tf-565",
+    "path": ["DevOps", "Terraform", "Import"],
+    "type": "concept",
+    "question": "How do you know what to pass as the `ID` in `terraform import`, and what happens if you guess wrong?",
+    "answer": "The ID format depends on the resource type, so check the **provider documentation** (EC2 instance = instance ID like `i-abcd1234`; Route53 zone = zone ID like `Z12ABC4UGMOZ2N`). If unsure you can just try one - an invalid ID only produces an error message.",
+    "tags": ["import", "providers"]
+  },
+  {
+    "id": "tf-566",
+    "path": ["DevOps", "Terraform", "Import"],
+    "type": "concept",
+    "question": "What is the key warning about importing the same remote object more than once?",
+    "answer": "Terraform assumes each remote object is bound to **only one** resource address (normally guaranteed because Terraform created the objects itself). With import it's on you: import each remote object to exactly one address, or Terraform may exhibit unwanted behavior.",
+    "tags": ["import", "state"]
+  },
+  {
+    "id": "tf-567",
+    "path": ["DevOps", "Terraform", "Import"],
+    "type": "concept",
+    "question": "What is the config-driven alternative to running `terraform import` manually, and when does the import happen?",
+    "answer": "The `import` **block** in your configuration. Terraform performs the import when you run `terraform apply`, which lets you automate imports as part of CI/CD pipelines.",
+    "tags": ["import", "import-block", "ci-cd"]
+  },
+  {
+    "id": "tf-568",
+    "path": ["DevOps", "Terraform", "Import"],
+    "type": "concept",
+    "question": "How does `terraform import` get provider configuration, and what is the one limitation on that configuration?",
+    "answer": "It loads config files from the `-config` directory (default: working directory). If there are none, or none for that provider, it prompts for credentials (environment variables also work). Limitation: the provider configuration must not depend on **non-variable** inputs - e.g. it can't depend on a data source. Variables are fine.",
+    "tags": ["import", "providers", "variables"]
+  },
+  {
+    "id": "tf-569",
+    "path": ["DevOps", "Terraform", "Import"],
+    "type": "applied",
+    "question": "You run `terraform import aws_instance.foo i-abcd1234`. Which of these provider blocks can Terraform use for the import, and why?\n```hcl\n# A\nprovider \"aws\" {\n  region = data.aws_ssm_parameter.region.value\n}\n\n# B\nprovider \"aws\" {\n  access_key = var.access_key\n  secret_key = var.secret_key\n}\n```",
+    "answer": "**B** works. Import provider configuration may only depend on variables, not other non-variable inputs. **A** depends on a data source, which import can't resolve - that's the one limitation on provider config during import.",
+    "tags": ["import", "providers", "data-sources"]
+  },
+  {
+    "id": "tf-570",
+    "path": ["DevOps", "Terraform", "Import"],
+    "type": "applied",
+    "question": "Write the command to import instance `i-abcd1234` into the **first** instance of `aws_instance.baz` (configured with `count`) inside module `foo`, on Linux/macOS. Why the quotes?",
+    "answer": "```bash\nterraform import 'module.foo.aws_instance.baz[0]' i-abcd1234\n```\nThe address contains `[ ]` characters the shell would otherwise interpret, so wrap it in single quotes.",
+    "tags": ["import", "addressing", "count", "modules"]
+  },
+  {
+    "id": "tf-571",
+    "path": ["DevOps", "Terraform", "Import"],
+    "type": "applied",
+    "question": "On Linux, you run this and it fails to find the address you meant. What is wrong, and what is the fix?\n```bash\nterraform import aws_instance.baz[\"example\"] i-abcd1234\n```",
+    "answer": "The shell strips the double quotes (and may glob the brackets), so Terraform receives `baz[example]` instead of the `for_each` key `\"example\"`. Fix: single-quote the whole address:\n```bash\nterraform import 'aws_instance.baz[\"example\"]' i-abcd1234\n```",
+    "tags": ["import", "addressing", "for_each"]
+  },
+  {
+    "id": "tf-572",
+    "path": ["DevOps", "Terraform", "Import"],
+    "type": "concept",
+    "question": "How does quoting a `for_each` import address differ across Linux/macOS/UNIX, PowerShell, and Windows `cmd.exe`?",
+    "answer": "- **Linux/macOS/UNIX:** single quotes around the address, plain inner double quotes: `'aws_instance.baz[\"example\"]'`\n- **PowerShell:** single quotes, escaped inner quotes: `'aws_instance.baz[\\\"example\\\"]'`\n- **cmd.exe:** no outer quotes, escaped inner quotes: `aws_instance.baz[\\\"example\\\"]`",
+    "tags": ["import", "addressing", "for_each", "shell"]
+  },
+  {
+    "id": "tf-573",
+    "path": ["DevOps", "Terraform", "Import"],
+    "type": "concept",
+    "question": "What are the defaults for `-config`, `-input`, `-lock-timeout`, and `-parallelism` on `terraform import`?",
+    "answer": "- `-config=path`: your **working directory**\n- `-input=true`: ask for provider-configuration input\n- `-lock-timeout=0s`: no retrying of the state lock\n- `-parallelism=n`: **10** concurrent operations while walking the graph\nAll flags are optional.",
+    "tags": ["import", "cli", "flags", "defaults"]
+  },
+  {
+    "id": "tf-574",
+    "path": ["DevOps", "Terraform", "Import"],
+    "type": "concept",
+    "question": "What does `-lock=false` do on `terraform import`, and why is it risky?",
+    "answer": "It skips holding a state lock during the operation. It's dangerous if others might concurrently run commands against the same workspace, since nothing prevents conflicting state writes.",
+    "tags": ["import", "state", "locking"]
+  },
+  {
+    "id": "tf-575",
+    "path": ["DevOps", "Terraform", "Import"],
+    "type": "concept",
+    "question": "Which `terraform import` flag is deprecated, and what is the default behavior it overrides?",
+    "answer": "`-provider=provider` is **deprecated**. It overrides which provider configuration is used to import the object; by default Terraform uses the provider specified in the configuration for the target resource, which is the best behavior in most cases.",
+    "tags": ["import", "providers", "flags", "deprecated"]
+  },
+  {
+    "id": "tf-576",
+    "path": ["DevOps", "Terraform", "Import"],
+    "type": "concept",
+    "question": "How do `-var` and `-var-file` behave on `terraform import`, including load order and when `-var-file` is useful?",
+    "answer": "`-var 'foo=bar'` can be repeated; values are literal expressions, so lists/maps work. `terraform.tfvars` and `*.auto.tfvars` in the current directory auto-load (`terraform.tfvars` first, then `.auto.tfvars` alphabetically). `-var-file` files (repeatable) **override** those automatic values, and the flag is only useful together with `-config`.",
+    "tags": ["import", "variables", "flags"]
+  },
+  {
+    "id": "tf-577",
+    "path": ["DevOps", "Terraform", "Import"],
+    "type": "concept",
+    "question": "Which `terraform import` options apply only to specific backends?",
+    "answer": "- `-ignore-remote-version`: only for the HCP Terraform CLI integration or the `remote` backend.\n- `-state`, `-state-out`, `-backup` (legacy options): only for the **local** backend.",
+    "tags": ["import", "backends", "flags"]
   }
 ]
