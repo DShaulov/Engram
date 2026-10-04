@@ -4878,5 +4878,149 @@
     "question": "You run `terraform plan` twice in a row with these set. What does `tf.log` contain afterwards?\n```bash\nexport TF_LOG=INFO\nexport TF_LOG_PATH=./tf.log\n```",
     "answer": "Logs from both runs. `TF_LOG_PATH` appends to the file rather than overwriting it, so the second run's logs follow the first's.",
     "tags": ["logging","env-vars"]
-  } 
+  },
+  {
+    "id": "tf-611",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces"],
+    "type": "concept",
+    "question": "What is a workspace in HCP Terraform, and what does it replace from local Terraform?",
+    "answer": "A workspace is a group of infrastructure resources managed by Terraform, holding everything needed to manage that collection. It takes the place of the persistent working directory used locally, and separate workspaces behave like completely separate working directories.",
+    "tags": ["hcp-terraform", "workspaces"]
+  },
+  {
+    "id": "tf-612",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces"],
+    "type": "concept",
+    "question": "For each of these, where does it live in local Terraform vs. an HCP Terraform workspace: configuration, variable values, state, credentials/secrets?",
+    "answer": "Configuration: on disk locally; in HCP it is in a linked VCS repo or periodically uploaded via API/CLI.\nVariable values: `.tfvars`, CLI args, or shell env locally; in the workspace in HCP.\nState: on disk or a remote backend locally; in the workspace in HCP.\nCredentials/secrets: shell env or prompts locally; in HCP they are stored in the workspace as sensitive variables.",
+    "tags": ["hcp-terraform", "variables", "state", "secrets"]
+  },
+  {
+    "id": "tf-613",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces"],
+    "type": "concept",
+    "question": "Besides configuration, variables, and current state, what two kinds of extra data does HCP Terraform keep for each workspace, and why are they useful?",
+    "answer": "State versions: backups of previous state files. Only current state is needed to manage resources, but history helps track changes over time and recover from problems.\nRun history: a record of all run activity (summaries, logs, a reference to the change that triggered the run, and user comments).",
+    "tags": ["hcp-terraform", "state", "runs"]
+  },
+  {
+    "id": "tf-614",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces"],
+    "type": "applied",
+    "question": "A workspace's state file records 9 managed resources and 4 data sources. What resource count does the top of the workspace show, and why?",
+    "answer": "13. The count reflects everything recorded in the state file, which includes both managed resources and data sources, not just managed resources.",
+    "tags": ["hcp-terraform", "state", "data-sources"]
+  },
+  {
+    "id": "tf-615",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces"],
+    "type": "concept",
+    "question": "Where does HCP Terraform perform runs for a workspace with remote operations enabled, and is that the default?",
+    "answer": "Remote operations are the default. HCP Terraform runs Terraform on its own disposable virtual machines, using that workspace's configuration, variables, and state.",
+    "tags": ["hcp-terraform", "runs", "remote-operations"]
+  },
+  {
+    "id": "tf-616",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces"],
+    "type": "concept",
+    "question": "Compare HCP Terraform workspaces with Terraform CLI workspaces: which are required, and what does each one represent or isolate?",
+    "answer": "HCP Terraform workspaces are required: they represent all the infrastructure collections in an organization and are a major part of role-based access (permissions per user/group, e.g. managing variables, performing runs). You cannot manage resources without at least one.\nCLI workspaces are NOT required: they are tied to one working directory and isolate multiple state files, so a single configuration can manage multiple groups of resources.",
+    "tags": ["hcp-terraform", "cli-workspaces", "rbac"]
+  },
+  {
+    "id": "tf-617",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces"],
+    "type": "applied",
+    "question": "A new organization has just been created in HCP Terraform with no workspaces yet. Can the team start managing resources there if they only use CLI workspaces locally? Explain.",
+    "answer": "No. CLI workspaces are a separate, optional feature that only isolates state files in one working directory. Managing resources in HCP Terraform requires creating at least one HCP Terraform workspace.",
+    "tags": ["hcp-terraform", "cli-workspaces"]
+  },
+  {
+    "id": "tf-618",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces"],
+    "type": "concept",
+    "question": "What is the purpose of Terraform CLI workspaces, and does the CLI require you to create them?",
+    "answer": "They let you keep multiple state files in the same working directory so one configuration can manage multiple groups of resources. The CLI does not require them.",
+    "tags": ["cli-workspaces", "state"]
+  },
+  {
+    "id": "tf-619",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces"],
+    "type": "concept",
+    "question": "How does HashiCorp recommend organizing infrastructure into HCP Terraform workspaces, and what are the benefits?",
+    "answer": "Break large monolithic configurations into smaller ones, give each its own workspace, and delegate permissions and responsibilities for each. HCP Terraform can manage monoliths fine, but small components make best use of its governance and delegation features. Benefits: teams can change things in parallel (like microservices), and configs are easier to reuse for other environments.",
+    "tags": ["hcp-terraform", "organization", "governance"]
+  },
+  {
+    "id": "tf-620",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces"],
+    "type": "applied",
+    "question": "Your production infrastructure is one big configuration, and the networking and monitoring teams keep blocking each other. Following the docs' guidance, how would you restructure it and how would dev environments fit in?",
+    "answer": "Split it into smaller configurations, e.g. networking, main application, and monitoring, and create one workspace for each (e.g. `networking-prod`, `app1-prod`, `monitoring-prod`), assigning separate teams to manage them. Teams can then work in parallel, and the same configs can be reused for other environments with workspaces like `app1-dev`.",
+    "tags": ["hcp-terraform", "organization", "environments"]
+  },
+  {
+    "id": "tf-621",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces"],
+    "type": "concept",
+    "question": "What do projects do in HCP Terraform, and which editions let you assign project permissions?",
+    "answer": "Projects organize workspaces into groups. On the Essentials, Standard, and Premium editions you can assign project permissions to scope access to collections of workspaces by business unit and responsibility.",
+    "tags": ["hcp-terraform", "projects", "editions"]
+  },
+  {
+    "id": "tf-622",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces"],
+    "type": "concept",
+    "question": "Name the three ways to create an HCP Terraform workspace.",
+    "answer": "Through the HCP Terraform UI, through the Workspaces API, or through the HCP Terraform CLI integration.",
+    "tags": ["hcp-terraform", "api", "cli"]
+  },
+  {
+    "id": "tf-623",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces"],
+    "type": "concept",
+    "question": "What can you do with the import feature for HCP Terraform workspaces?",
+    "answer": "You can search your existing infrastructure for resources and import them into a workspace so Terraform can manage them.",
+    "tags": ["hcp-terraform", "import"]
+  },
+  {
+    "id": "tf-624",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Health"],
+    "type": "concept",
+    "question": "What are the two types of evaluation in HCP Terraform workspace health assessments, and what does each check?",
+    "answer": "Drift detection: whether real-world infrastructure still matches your Terraform configuration.\nContinuous validation: whether custom conditions in the workspace's configuration continue to pass after Terraform provisions the infrastructure.",
+    "tags": ["hcp-terraform", "drift-detection", "continuous-validation"]
+  },
+  {
+    "id": "tf-625",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Health"],
+    "type": "applied",
+    "question": "An organization on the HCP Terraform Essentials edition wants automatic drift detection on its workspaces. Is that available to them?",
+    "answer": "No. Health assessments (drift detection and continuous validation) are available only in the Standard and Premium editions, so they would need to upgrade.",
+    "tags": ["hcp-terraform", "editions", "drift-detection"]
+  },
+  {
+    "id": "tf-626",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Health"],
+    "type": "concept",
+    "question": "How can health assessments be turned on across an organization's workspaces?",
+    "answer": "You can enforce health assessments for all eligible workspaces, or let each workspace opt in through its own workspace settings.",
+    "tags": ["hcp-terraform", "health-assessments", "settings"]
+  },
+  {
+    "id": "tf-627",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces"],
+    "type": "concept",
+    "question": "In Terraform Enterprise, how can you cap the number of workspaces in a single organization? Give both mechanisms.",
+    "answer": "Administrators can set a maximum via Admin Settings, or you can set a workspace limit with the tfe provider (the `workspace_limit` argument on the organization resource).",
+    "tags": ["terraform-enterprise", "tfe-provider", "limits"]
+  },
+  {
+    "id": "tf-628",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces"],
+    "type": "applied",
+    "question": "What does this configuration do, and on which product does the docs say you would use it?\n```hcl\nresource \"tfe_organization\" \"main\" {\n  name            = \"acme\"\n  email           = \"admin@example.com\"\n  workspace_limit = 50\n}\n```",
+    "answer": "It uses the tfe provider to set a limit of 50 workspaces for the organization. The docs describe this workspace limit under Terraform Enterprise, as an alternative to setting the maximum through Admin Settings.",
+    "tags": ["terraform-enterprise", "tfe-provider", "limits"]
+  }
 ]
