@@ -5022,5 +5022,157 @@
     "question": "What does this configuration do, and on which product does the docs say you would use it?\n```hcl\nresource \"tfe_organization\" \"main\" {\n  name            = \"acme\"\n  email           = \"admin@example.com\"\n  workspace_limit = 50\n}\n```",
     "answer": "It uses the tfe provider to set a limit of 50 workspaces for the organization. The docs describe this workspace limit under Terraform Enterprise, as an alternative to setting the maximum through Admin Settings.",
     "tags": ["terraform-enterprise", "tfe-provider", "limits"]
+  },
+  {
+    "id": "tf-629",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workflow"],
+    "type": "concept",
+    "question": "What is the Terraform CLI's default workflow, and why do teams move to HCP Terraform's remote workflow?",
+    "answer": "By default the CLI uses a local workflow: operations run on the workstation where it is invoked and state is kept in a local directory. Working in a team needs a remote workflow, where HCP Terraform runs the Terraform CLI for you and provides shared state, runs, and collaboration.",
+    "tags": ["local-vs-remote"]
+  },
+  {
+    "id": "tf-630",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workflow"],
+    "type": "concept",
+    "question": "What is the difference between a workspace and a Stack in HCP Terraform?",
+    "answer": "A workspace manages a self-contained infrastructure for a single Terraform root module. A Stack manages multiple infrastructure modules and repeats that infrastructure at scale.",
+    "tags": ["stacks", "workspaces"]
+  },
+  {
+    "id": "tf-631",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workflow", "Remote Execution"],
+    "type": "concept",
+    "question": "Where does HCP Terraform run Terraform by default, and how can you run it on your own infrastructure instead?",
+    "answer": "By default it runs on disposable virtual machines in HCP Terraform's own cloud infrastructure. HCP Terraform agents let you run Terraform on your own isolated, private, or on-premises infrastructure.",
+    "tags": ["agents"]
+  },
+  {
+    "id": "tf-632",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workflow", "Remote Execution"],
+    "type": "concept",
+    "question": "A workspace's Execution mode is switched to local. What happens to its state, and what can a developer still do with it?",
+    "answer": "The workspace still hosts the state remotely. Terraform CLI can use that remote state for local runs through the HCP Terraform CLI integration. Only remote execution is disabled, not remote state.",
+    "tags": ["execution-mode", "state"]
+  },
+  {
+    "id": "tf-633",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workflow", "Remote State"],
+    "type": "concept",
+    "question": "How is state stored in HCP Terraform workspaces versus Stacks?",
+    "answer": "In a workspace, state storage is tied to that workspace, so state stays associated with the configuration that created it. In a Stack, each deployment stores and updates its own isolated remote state.",
+    "tags": ["stacks", "workspaces"]
+  },
+  {
+    "id": "tf-634",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workflow", "Remote State"],
+    "type": "concept",
+    "question": "How do separate workspaces share data, and how can a downstream workspace react when an upstream one changes?",
+    "answer": "The upstream workspace exposes root-level outputs, which downstream workspaces read with `terraform_remote_state` data sources. This requires remote operations and is subject to per-workspace access controls. Workspace-to-workspace run triggers make downstream workspaces run when their dependencies change. Stacks in the same project can also pass data to each other directly.",
+    "tags": ["outputs", "run-triggers"]
+  },
+  {
+    "id": "tf-635",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workflow", "Remote State"],
+    "type": "applied",
+    "question": "This configuration reads from another workspace:\n```hcl\ndata \"terraform_remote_state\" \"network\" {\n  backend = \"remote\"\n  config = {\n    organization = \"acme\"\n    workspaces = {\n      name = \"network-prod\"\n    }\n  }\n}\n\nresource \"aws_instance\" \"app\" {\n  subnet_id = data.terraform_remote_state.network.outputs.subnet_id\n}\n```\nWhat must be true of the `network-prod` workspace for `subnet_id` to resolve?",
+    "answer": "Its configuration must define a **root-level output** named `subnet_id`, because only root-level outputs are readable through `terraform_remote_state`. The reading workspace must also be allowed to access that workspace's state under its per-workspace access controls.",
+    "tags": ["outputs", "access-control"]
+  },
+  {
+    "id": "tf-636",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workflow", "VCS"],
+    "type": "concept",
+    "question": "What does HCP Terraform do when a commit is merged versus when a pull request is opened on a VCS-linked workspace?",
+    "answer": "A merged commit makes linked workspaces and Stacks automatically run Terraform plans with the new code. An opened pull request triggers a speculative plan with the proposed changes, and the result is posted as a PR check so reviewers can see at a glance whether it succeeded and click through to the details.",
+    "tags": ["speculative-plan", "pull-request"]
+  },
+  {
+    "id": "tf-637",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workflow", "VCS"],
+    "type": "concept",
+    "question": "Is VCS integration required to use HCP Terraform's remote execution? What are the alternatives?",
+    "answer": "No, it is optional. If your VCS is unsupported or you want to keep an existing validation and deployment pipeline, you can upload new configuration versions through the API or the Terraform CLI. You still get remote execution and HCP Terraform's other features.",
+    "tags": ["api", "cli"]
+  },
+  {
+    "id": "tf-638",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workflow", "CLI Integration"],
+    "type": "concept",
+    "question": "How do remote CLI-driven runs let a developer preview a change without holding production cloud credentials?",
+    "answer": "They use the Terraform configuration from the current working directory together with the remote workspace's variables. The credentials live in the workspace, so the developer does not need production cloud credentials locally.",
+    "tags": ["variables", "credentials"]
+  },
+  {
+    "id": "tf-639",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workflow", "CLI Integration"],
+    "type": "concept",
+    "question": "Which state manipulation commands does the HCP Terraform CLI integration support, and what is the CLI entry point for managing a Stack?",
+    "answer": "It supports state manipulation commands such as `terraform import` and `terraform taint`. For a Stack, use the `terraform stacks` commands to manage its configuration, deployments, and more.",
+    "tags": ["stacks", "state"]
+  },
+  {
+    "id": "tf-640",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workflow", "Private Registry"],
+    "type": "concept",
+    "question": "What does the HCP Terraform private registry hold, and what determines a module's versions?",
+    "answer": "It holds your organization's internal providers and modules, which users can browse and consume with flexible version constraints. Your VCS is the source of truth and **Git tags** manage module versions. You tell HCP Terraform which repositories contain modules and the registry handles the rest.",
+    "tags": ["modules", "git-tags"]
+  },
+  {
+    "id": "tf-641",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Integrations"],
+    "type": "concept",
+    "question": "What can other services do through the HCP Terraform API, and what is the `tfe` provider for?",
+    "answer": "Nearly all HCP Terraform features are available in the API, so other services can create or configure workspaces or Stacks, upload configurations, start runs, and more. The `tfe` provider, built on the API, lets you manage HCP Terraform teams and workspaces as a Terraform configuration.",
+    "tags": ["api", "tfe-provider"]
+  },
+  {
+    "id": "tf-642",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Integrations"],
+    "type": "concept",
+    "question": "How are HCP Terraform notifications configured, and where can they be sent?",
+    "answer": "Notifications are configured per workspace. They report on workspace runs and can be sent to other systems, including Slack and any service that accepts webhooks.",
+    "tags": ["webhooks", "slack"]
+  },
+  {
+    "id": "tf-643",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Integrations"],
+    "type": "concept",
+    "question": "What are run tasks, and where do the integrations come from?",
+    "answer": "Run tasks let workspaces execute tasks in external systems at specific points in the HCP Terraform run lifecycle. You can use existing partner integrations or build your own on the run tasks API.",
+    "tags": ["run-tasks", "api"]
+  },
+  {
+    "id": "tf-644",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Governance"],
+    "type": "concept",
+    "question": "Which frameworks does HCP Terraform support for policy-as-code, and what enforcement behaviors can a policy have?",
+    "answer": "Sentinel and Open Policy Agent (OPA). Depending on its settings, a policy can be advisory (a warning), a firm requirement that prevents Terraform from provisioning infrastructure, or a soft requirement that your compliance team can bypass when appropriate.",
+    "tags": ["sentinel", "opa"]
+  },
+  {
+    "id": "tf-645",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Governance"],
+    "type": "concept",
+    "question": "A policy failure should block provisioning, but compliance team members must be able to override it when justified. Which enforcement behavior fits, and how does it differ from the other two?",
+    "answer": "A **soft** requirement. Advisory only warns and never blocks. A hard (firm) requirement blocks provisioning with no bypass. A soft requirement blocks too, but your compliance team can bypass it when appropriate.",
+    "tags": ["enforcement-levels"]
+  },
+  {
+    "id": "tf-646",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Governance"],
+    "type": "concept",
+    "question": "What does cost estimation show before infrastructure changes are applied, and how can it feed policy?",
+    "answer": "For the major cloud providers, a workspace can display an estimate of its total cost plus any change in cost caused by the proposed updates. Cost estimates can be used in Sentinel policies to warn about major price shifts.",
+    "tags": ["sentinel", "cost"]
+  },
+  {
+    "id": "tf-647",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Governance"],
+    "type": "concept",
+    "question": "How does HCP Terraform's team-based permissions system support the principle of least privilege?",
+    "answer": "You define groups of users that match your organization's real-world teams and assign each only the permissions it needs, at workspace, project, and Stack level. Combined with the access controls your VCS provider already offers for code, this is an effective way to follow least privilege.",
+    "tags": ["teams", "permissions"]
   }
 ]
