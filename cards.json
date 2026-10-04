@@ -5174,5 +5174,149 @@
     "question": "How does HCP Terraform's team-based permissions system support the principle of least privilege?",
     "answer": "You define groups of users that match your organization's real-world teams and assign each only the permissions it needs, at workspace, project, and Stack level. Combined with the access controls your VCS provider already offers for code, this is an effective way to follow least privilege.",
     "tags": ["teams", "permissions"]
+  },
+  {
+    "id": "tf-648",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Queue and Locks"],
+    "type": "concept",
+    "question": "How does an HCP Terraform workspace handle a new run when another run is already in progress, and what state does the new run enter?",
+    "answer": "Each workspace keeps its own queue and processes runs in order. The new run goes to the end of the queue and waits in the *pending* state until the current run has completely finished. A workspace can have any number of pending runs.",
+    "tags": ["queue","run-states"]
+  },
+  {
+    "id": "tf-649",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Queue and Locks"],
+    "type": "concept",
+    "question": "Why doesn't HCP Terraform start planning a pending run while an earlier run is still in progress?",
+    "answer": "The current run might change what a later run would do, so a plan made early could be wrong. A pending run isn't planned at all until the run ahead of it has finished.",
+    "tags": ["queue"]
+  },
+  {
+    "id": "tf-650",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Queue and Locks"],
+    "type": "concept",
+    "question": "Which two kinds of run can proceed regardless of the run queue and workspace locks, and what is the catch for saved plans?",
+    "answer": "Plan-only runs (speculative plans) and the planning stages of saved plan runs. The catch: *applying* a saved plan requires that no other run is in progress and the workspace is unlocked, and that apply then blocks the queue/locks the workspace as usual. Terraform Enterprise does not yet support the saved-plan workflow.",
+    "tags": ["queue","locks","saved-plans","terraform-enterprise"]
+  },
+  {
+    "id": "tf-651",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Saved Plans"],
+    "type": "applied",
+    "question": "A run is already in progress on a workspace that has the CLI integration configured. You run:\n```bash\nterraform plan -out=tfplan\nterraform apply tfplan\n```\nWhat happens at each step?",
+    "answer": "`plan -out` starts a saved plan run whose planning stage proceeds immediately, without waiting for the in-progress run. `apply tfplan` can only go ahead once no other run is in progress and the workspace is unlocked; the apply then blocks the queue as usual. Saved plans from the CLI need Terraform CLI v1.6.0+.",
+    "tags": ["saved-plans","cli","queue"]
+  },
+  {
+    "id": "tf-652",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Queue and Locks"],
+    "type": "concept",
+    "question": "What does HCP Terraform lock a run to when it is initiated, and what does that mean for later changes?",
+    "answer": "A particular configuration version and a particular set of variable values. Changing variables or committing new code afterwards only affects future runs, not runs that are already pending, planning, or awaiting apply.",
+    "tags": ["configuration-versions","variables"]
+  },
+  {
+    "id": "tf-653",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Queue and Locks"],
+    "type": "applied",
+    "question": "A run has finished planning and is awaiting your approval:\n```text\nRun state: Needs confirmation\n```\nMeanwhile a teammate merges a new commit and edits a workspace variable. You then approve the run. Which configuration and variable values does the apply use?",
+    "answer": "The ones locked in when the run was initiated: the old configuration version and the old variable values. The merged commit and the variable edit only affect future runs.",
+    "tags": ["configuration-versions","variables","run-states"]
+  },
+  {
+    "id": "tf-654",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Queue and Locks"],
+    "type": "concept",
+    "question": "What happens to new runs on a locked workspace, and how can a workspace become locked?",
+    "answer": "HCP Terraform still creates the runs (automatically or manually), but they don't begin until the workspace is unlocked. A workspace is locked automatically while a run is in progress, or deliberately by a user or team (for example, for maintenance).",
+    "tags": ["locks"]
+  },
+  {
+    "id": "tf-655",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Queue and Locks"],
+    "type": "concept",
+    "question": "A workspace is locked. Someone starts a normal run, and a pull request triggers a speculative plan. What happens to each?",
+    "answer": "The normal run is created but stays pending until the workspace is unlocked. The speculative plan is a plan-only run, which ignores workspace locking, so it proceeds immediately.",
+    "tags": ["locks","speculative-plans"]
+  },
+  {
+    "id": "tf-656",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Plan and Apply"],
+    "type": "concept",
+    "question": "Name two kinds of plan that can't be auto-applied even when the workspace has auto-apply enabled.",
+    "answer": "Plans queued by run triggers, and plans queued by users who don't have permission to apply runs for that workspace.",
+    "tags": ["auto-apply","permissions","run-triggers"]
+  },
+  {
+    "id": "tf-657",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Plan and Apply"],
+    "type": "concept",
+    "question": "What happens when a plan contains no changes, and how can that behavior be overridden?",
+    "answer": "HCP Terraform doesn't attempt an apply. The run ends with the status \"Planned and finished\". The *allow empty apply* run mode overrides this behavior.",
+    "tags": ["run-states","run-modes"]
+  },
+  {
+    "id": "tf-658",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Speculative Plans"],
+    "type": "concept",
+    "question": "What is a speculative plan, and why can it start without waiting for other runs?",
+    "answer": "A plan-only run used to test changes during editing and code review. It shows possible changes and the policies they affect, but can never apply anything. Because it doesn't affect real infrastructure, it doesn't have to wait in the queue. Past speculative runs are listed alongside the workspace's other runs.",
+    "tags": ["speculative-plans","queue"]
+  },
+  {
+    "id": "tf-659",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Speculative Plans"],
+    "type": "concept",
+    "question": "What are the three ways to start a speculative plan?",
+    "answer": "1) A pull request in a VCS-backed workspace (the PR gets a link to the plan). 2) `terraform plan` with the CLI integration configured (output streams to the terminal, plus a link). 3) The runs API, when the configuration version is marked as speculative.",
+    "tags": ["speculative-plans","vcs","cli","api"]
+  },
+  {
+    "id": "tf-660",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Speculative Plans"],
+    "type": "concept",
+    "question": "What are the rules for retrying a speculative plan in the UI, and what does a retry create?",
+    "answer": "Use the \"Retry Run\" button. It requires permission to queue plans on the workspace, and only failed or canceled plans can be retried. A retry creates a new run on the same configuration version; in VCS-backed workspaces the pull request receives the new run's status and a link.",
+    "tags": ["speculative-plans","permissions"]
+  },
+  {
+    "id": "tf-661",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Saved Plans"],
+    "type": "concept",
+    "question": "With the CLI integration, which commands create, inspect and apply a saved plan in HCP Terraform, and what version is required?",
+    "answer": "```bash\nterraform plan -out <FILE>   # create and save the plan\nterraform show <FILE>        # inspect it before applying\nterraform apply <FILE>       # apply the saved plan\n```\nRequires Terraform CLI v1.6.0+. Via the API, use the `save-plan` option when creating the run.",
+    "tags": ["saved-plans","cli","api"]
+  },
+  {
+    "id": "tf-662",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Starting Runs"],
+    "type": "concept",
+    "question": "What are HCP Terraform's three run workflows, and how do they differ?",
+    "answer": "UI/VCS-driven (the primary mode of operation), API-driven (more flexible, but you must build some tooling), and CLI-driven (uses the standard Terraform CLI to execute runs in HCP Terraform). Runs can be initiated by the **+ New run** button, VCS webhooks, `terraform apply` with the CLI integration, or the Runs API.",
+    "tags": ["workflows","vcs","cli","api"]
+  },
+  {
+    "id": "tf-663",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Import"],
+    "type": "concept",
+    "question": "How does `terraform import` behave in an HCP Terraform workspace, and what is the recommended alternative?",
+    "answer": "HCP Terraform does not support remote execution for `terraform import`. The workspace acts only as a remote state backend, and the command runs on your own workstation or CI worker. The recommended approach is `import` blocks (introduced in Terraform 1.5).",
+    "tags": ["import","state"]
+  },
+  {
+    "id": "tf-664",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs","Import"],
+    "type": "applied",
+    "question": "A workspace stores `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` as environment variables. You run this locally with the CLI integration configured:\n```bash\nterraform import aws_s3_bucket.logs my-logs-bucket\n```\nWhy might it fail to authenticate, and how do you fix it?",
+    "answer": "`terraform import` runs locally, not remotely, so the workspace's environment variables aren't available to it. Define the credentials the provider needs in your local execution scope (for example, export them in your shell or CI environment), or prefer an `import` block, which is the recommended method.",
+    "tags": ["import","environment-variables","cli"]
+  },
+  {
+    "id": "tf-665",
+    "path": ["DevOps","Terraform","HCP Terraform","Runs"],
+    "type": "concept",
+    "question": "How does an HCP Terraform run relate to a local `terraform apply`?",
+    "answer": "A normal run is a plan followed by an apply, with approval in between by default, so it resembles a local `terraform apply` without a plan file. But \"run\" is broader: speculative plans are plan-only runs, saved plan runs split plan from apply, destroy and refresh-only are run modes, and a run with no changes ends as \"Planned and finished\". Runs are also locked to a configuration version and variable set and pass through the workspace queue.",
+    "tags": ["runs","apply"]
   }
 ]
