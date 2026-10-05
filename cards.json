@@ -5606,5 +5606,85 @@
     "question": "Where do you configure a run trigger, and how can you tell a run was started by one?",
     "answer": "On the **downstream** workspace: Settings → Run Triggers → pick a workspace under Source Workspaces → Add workspace. A triggered run's details link to the source workspace and the applied run that fired it. The source workspace's plan and apply details also state which workspaces will be started automatically.",
     "tags": ["run-triggers", "ui"]
+  },
+  {
+    "id": "tf-702",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Variables", "Variable Sets"],
+    "type": "concept",
+    "question": "What is a variable set in HCP Terraform, who can own one, and what scope options exist?",
+    "answer": "A reusable collection of variables applied to multiple workspaces and Stacks. It is owned by an organization or a project (the owner decides the permissions needed to manage it).\n\nOrg-owned: apply globally (all existing and future workspaces) or to specific projects/Stacks/workspaces (picking a project covers all its current and future workspaces and Stacks).\nProject-owned: apply to the entire project, or to specific workspaces/Stacks in it.",
+    "tags": ["variable-sets", "scope"]
+  },
+  {
+    "id": "tf-703",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Variables", "Variable Sets", "Permissions"],
+    "type": "concept",
+    "question": "Which permissions are needed to manage organization-owned vs project-owned variable sets?",
+    "answer": "Org-owned (create/update/delete): the owners team, or a team with Manage all projects or Manage all workspaces.\nProject-owned (create/edit/apply): a team with project Write, Maintain, Admin or Manage variable sets, or Manage all projects at org level.\n\nViewing variables/sets needs Read variables; editing workspace-specific variables needs Read and write variables on that workspace.",
+    "tags": ["permissions", "variable-sets"]
+  },
+  {
+    "id": "tf-704",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Variables", "Variable Sets", "Overwrite"],
+    "type": "applied",
+    "question": "A variable set defines the Terraform variable `region`, but one workspace needs a different value. What do you do, and what does the UI show?",
+    "answer": "In that workspace, create a workspace-specific variable of the same type (Terraform) with the same key `region`. The set's variable gets a yellow OVERWRITTEN flag, and clicking it highlights the value that will be used in runs. Other workspaces keep the set's value.\n\nAn environment variable named `region` would not overwrite it, because the type must match.",
+    "tags": ["variable-sets", "precedence"]
+  },
+  {
+    "id": "tf-705",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Variables", "Variable Sets", "Overwrite"],
+    "type": "concept",
+    "question": "What happens if the same variable key is declared in multiple global variable sets?",
+    "answer": "HCP Terraform returns an error. (For non-global sets applied to the same workspace, a variable in one set can overwrite a same-key variable in another; the overwrite is resolved per workspace.)",
+    "tags": ["variable-sets", "gotcha"]
+  },
+  {
+    "id": "tf-706",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Variables", "Variable Sets", "Priority"],
+    "type": "concept",
+    "question": "What do priority variable sets override, and what is their limitation?",
+    "answer": "They overwrite same-key variables at more specific scopes, including command-line flags (`-var`/`-var-file`) and `*.auto.tfvars` / `terraform.tfvars` files.\n\nLimitation: a user can still edit the Terraform configuration to drop the variable and hard-code a value. For stricter enforcement, use policy checks or run tasks.",
+    "tags": ["variable-sets", "precedence", "governance"]
+  },
+  {
+    "id": "tf-707",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Variables", "Variable Sets", "Stacks"],
+    "type": "applied",
+    "question": "A Stack uses the config below. Another variable set in the org also defines `db_password`. Which value does `production` use, and when would the deployment fail?\n```hcl\nstore \"varset\" \"secrets\" {\n  name     = \"Database passwords\"\n  category = \"terraform\"\n}\n\ndeployment \"production\" {\n  inputs = {\n    database_password = store.varset.secrets.db_password\n  }\n}\n```",
+    "answer": "It always uses `db_password` from the \"Database passwords\" set. Stacks reference sets directly by name/ID, so variable precedence does not apply and same-named variables elsewhere are ignored.\n\nThe Stack must be able to reach the set (via its project, or a global set). If the set is removed from the Stack's project/org, the deployment fails.",
+    "tags": ["stacks", "store-block", "precedence"]
+  },
+  {
+    "id": "tf-708",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Variables", "Execution Mode"],
+    "type": "concept",
+    "question": "How do workspace variables and variable sets behave when a workspace uses Local execution mode?",
+    "answer": "HCP Terraform does not evaluate workspace variables or variable sets for that workspace, and the Variables page is not available.",
+    "tags": ["execution-mode", "variable-sets", "gotcha"]
+  },
+  {
+    "id": "tf-709",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Variables", "Sensitive"],
+    "type": "concept",
+    "question": "What does marking an HCP Terraform variable Sensitive do, and how do you change its other attributes afterwards?",
+    "answer": "It becomes write-only: nobody (even you) can read the value in the UI or Variables API. Users with read-and-write variable permission can set a new value, but other attributes can't be edited; delete the variable and create a replacement.\n\nCaveat: sensitive values can still appear in logs and state files in some cases (e.g. a Terraform variable passed to an output or resource parameter).",
+    "tags": ["sensitive", "security"]
+  },
+  {
+    "id": "tf-710",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Variables", "Format"],
+    "type": "concept",
+    "question": "What are the HCP Terraform variable size limits, and where can the HCL option be used?",
+    "answer": "Key: 128 characters. Description: 512 characters. Value: 256 KB. The same limits and formats apply to workspace variables and variable sets.\n\nThe HCL checkbox works for Terraform variables only (not environment variables). Values are strings by default; use HCL for lists/maps.",
+    "tags": ["limits", "hcl"]
+  },
+  {
+    "id": "tf-711",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Variables", "Security"],
+    "type": "concept",
+    "question": "How are variable values and descriptions stored in HCP Terraform, and why prefer environment variables for credentials?",
+    "answer": "Values are encrypted with Vault's transit backend; descriptions are stored in plain text, so never put secrets there.\n\nRuns receive the full text of all Terraform variables (sensitive ones too), which may leak into logs, state files (if sent to outputs/resource args) and downloaded Sentinel mocks. Environment variables aren't stored in state (though `TF_LOG=TRACE` can log them). Dynamic credentials (temporary, per-run) avoid static secrets altogether.",
+    "tags": ["security", "credentials", "environment-variables"]
   }
 ]
