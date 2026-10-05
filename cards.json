@@ -5686,5 +5686,69 @@
     "question": "How are variable values and descriptions stored in HCP Terraform, and why prefer environment variables for credentials?",
     "answer": "Values are encrypted with Vault's transit backend; descriptions are stored in plain text, so never put secrets there.\n\nRuns receive the full text of all Terraform variables (sensitive ones too), which may leak into logs, state files (if sent to outputs/resource args) and downloaded Sentinel mocks. Environment variables aren't stored in state (though `TF_LOG=TRACE` can log them). Dynamic credentials (temporary, per-run) avoid static secrets altogether.",
     "tags": ["security", "credentials", "environment-variables"]
+  },
+  {
+    "id": "tf-712",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "CLI Integration", "Connecting"],
+    "type": "concept",
+    "question": "What are the four steps to connect the Terraform CLI to HCP Terraform, and which one is optional?",
+    "answer": "1) Provide credentials. 2) Define connection settings (a `cloud` block). 3) Run `terraform init`. 4) Migrate state data, which is the optional step (only relevant if you already have state). Prerequisite: a user profile in HCP Terraform with permission to create a workspace.",
+    "tags": ["cloud-block", "init"]
+  },
+  {
+    "id": "tf-713",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "CLI Integration", "Cloud Block"],
+    "type": "concept",
+    "question": "Where does the `cloud` block live, and what do `organization`, `workspaces.tags`, `workspaces.name`, and `workspaces.project` each specify?",
+    "answer": "`cloud` is nested inside the `terraform` block. `organization` is the HCP Terraform org to connect to. `workspaces.tags` links the directory to existing workspaces in the org with matching tags (a map of strings, or the legacy list of key-only tags). `workspaces.name` links to one existing workspace instead of tags. `workspaces.project` names an existing project; Terraform associates the config with workspaces in it that match the `name` or `tags`.",
+    "tags": ["workspaces"]
+  },
+  {
+    "id": "tf-714",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "CLI Integration", "Cloud Block"],
+    "type": "applied",
+    "question": "What's wrong with this configuration?\n```hcl\nterraform {\n  cloud {\n    organization = \"my-org\"\n\n    workspaces {\n      name = \"app-prod\"\n      tags = {\n        app = \"mine\"\n      }\n    }\n  }\n}\n```",
+    "answer": "`workspaces.name` and `workspaces.tags` are mutually exclusive: if you configure `name`, you cannot use `tags`. Pick one. Use `name` to target a single existing workspace, or `tags` (optionally with `project`) to link to every matching workspace. With `tags`, if nothing matches at `terraform init`, the CLI prompts you to create a workspace carrying those tags.",
+    "tags": ["workspaces", "init"]
+  },
+  {
+    "id": "tf-715",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "CLI Integration", "Credentials"],
+    "type": "concept",
+    "question": "How can you provide credentials for the CLI to access HCP Terraform, which is recommended, and what does the `cloud` block's `hostname` default to?",
+    "answer": "Recommended: run `terraform login`. Alternative: put a user `token` in the Terraform configuration (the `token` attribute of the `cloud` block). `hostname` is optional and defaults to `app.terraform.io`.",
+    "tags": ["login", "security"]
+  },
+  {
+    "id": "tf-716",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "CLI Integration", "Migration"],
+    "type": "applied",
+    "question": "You're migrating from this `remote` backend to the `cloud` block. How do you replace `prefix`, and what changes for `terraform workspace select` afterward?\n```hcl\nterraform {\n  backend \"remote\" {\n    organization = \"my-org\"\n    workspaces {\n      prefix = \"my-app-\"\n    }\n  }\n}\n```",
+    "answer": "Rename `backend \"remote\"` to `cloud` and replace `prefix` with `tags`, e.g. `tags = { app = \"mine\" }`, because the `cloud` block does not support `prefix`. Terraform keeps using the same HCP Terraform workspaces. Afterward you must refer to workspaces by their full name: `terraform workspace select my-app-prod`, not `terraform workspace select prod`.",
+    "tags": ["backend", "workspaces"]
+  },
+  {
+    "id": "tf-717",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "CLI Integration", "Migration"],
+    "type": "concept",
+    "question": "After adding a `cloud` block and running `terraform init`, how does state migration differ between a local/state backend and an existing `remote` backend?",
+    "answer": "Local or state backend: `init` prompts you to migrate existing state into new HCP Terraform workspaces, and may prompt you to rename them, since HCP Terraform workspaces need unique names within the org (CLI-only workspaces were just environments of one config). A common pattern is `<COMPONENT>-<ENVIRONMENT>-<REGION>`, e.g. `networking-prod-us-east`. Remote backend: no new migration, just swap `backend \"remote\"` for `cloud` and the same workspaces keep working.",
+    "tags": ["state", "init"]
+  },
+  {
+    "id": "tf-718",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "CLI Integration", "Exclude Files"],
+    "type": "concept",
+    "question": "With no `.terraformignore` file, which directories are excluded from the configuration uploaded to HCP Terraform, and what is the exception?",
+    "answer": "`.git/` directories and `.terraform/` directories are excluded by default. Exception: `.terraform/modules` is still uploaded.",
+    "tags": ["terraformignore"]
+  },
+  {
+    "id": "tf-719",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "CLI Integration", "Exclude Files"],
+    "type": "concept",
+    "question": "When is the configuration directory uploaded to HCP Terraform, where must `.terraformignore` live, and what are its pattern rules?",
+    "answer": "The upload happens on a remote `terraform plan` or `terraform apply` in a CLI-driven run, not at `init`. Terraform parses only the `.terraformignore` at the root of the configuration directory. Rules follow `.gitignore` style: `#` starts a comment, blank lines are ignored, a trailing `/` marks a directory, and a leading `!` negates a pattern. Negation can hurt performance when ignoring large directories, so place negation rules as early as possible or avoid them.",
+    "tags": ["terraformignore", "plan", "apply"]
   }
 ]
