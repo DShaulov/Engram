@@ -5318,5 +5318,77 @@
     "question": "How does an HCP Terraform run relate to a local `terraform apply`?",
     "answer": "A normal run is a plan followed by an apply, with approval in between by default, so it resembles a local `terraform apply` without a plan file. But \"run\" is broader: speculative plans are plan-only runs, saved plan runs split plan from apply, destroy and refresh-only are run modes, and a run with no changes ends as \"Planned and finished\". Runs are also locked to a configuration version and variable set and pass through the workspace queue.",
     "tags": ["runs","apply"]
+  },
+  {
+    "id": "tf-666",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Private Registry"],
+    "type": "concept",
+    "question": "What is the HCP Terraform private registry for, which two kinds of artifact does it hold, and which two capabilities does it offer?",
+    "answer": "It works like the public Terraform Registry but scoped to your organization, and is used to share **providers** and **modules** internally (not modules only). It supports **versioning** and a **searchable list** of the available providers and modules.",
+    "tags": ["registry", "modules", "providers"]
+  },
+  {
+    "id": "tf-667",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Private Registry", "Public Artifacts"],
+    "type": "concept",
+    "question": "Where do public providers and modules live when you use them with a private registry, and what does HCP Terraform do with them? Why is that useful?",
+    "answer": "They stay hosted on the **public Terraform Registry**; HCP Terraform can **automatically synchronize** them into your organization's private registry. This lets you designate which public artifacts are *recommended* for the organization and makes their documentation and examples centrally accessible.",
+    "tags": ["registry", "sync", "modules", "providers"]
+  },
+  {
+    "id": "tf-668",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Private Registry", "Private Artifacts"],
+    "type": "concept",
+    "question": "Who can use private providers and modules in the private registry, and what extra sharing option exists in Terraform Enterprise?",
+    "answer": "They are hosted in the organization's private registry and are available only to **members of that organization**. In **Terraform Enterprise**, they are also available to other organizations that are **configured to share** with that organization (registry sharing is an admin-level setting).",
+    "tags": ["registry", "tfe", "access"]
+  },
+  {
+    "id": "tf-669",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Private Registry", "Terraform Enterprise"],
+    "type": "concept",
+    "question": "Which three hosts must a Terraform Enterprise instance be able to reach for the private registry to work with public providers and modules?",
+    "answer": "`registry.terraform.io`, the **Algolia** search endpoint (`yy0ffni7mf-dsn.algolia.net`), and `github.com`.",
+    "tags": ["tfe", "networking", "sync"]
+  },
+  {
+    "id": "tf-670",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Private Registry", "Terraform Enterprise"],
+    "type": "applied",
+    "question": "A Terraform Enterprise instance sits behind a strict egress firewall. Admins allow only `registry.terraform.io` and `github.com`. Users now report that adding public modules to the private registry misbehaves, even though the public registry itself is reachable. What is the likely cause?",
+    "answer": "The firewall also needs to allow the **Algolia search endpoint** (`yy0ffni7mf-dsn.algolia.net`). The private registry needs all three hosts (`registry.terraform.io`, Algolia, `github.com`) to work with public providers and modules, so allowing only two leaves it partly broken.",
+    "tags": ["tfe", "networking", "sync"]
+  },
+  {
+    "id": "tf-671",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Private Registry", "Governance"],
+    "type": "concept",
+    "question": "How do you restrict which modules members of your organization may use from the private registry? Does the registry enforce this on its own?",
+    "answer": "Use **Sentinel policies** (HCP Terraform policy enforcement). The registry only hosts and curates artifacts; it does not enforce usage rules by itself. Example policies: require all non-root modules to be private modules or public modules from your own private registry, or require modules to use recent versions.",
+    "tags": ["sentinel", "policy", "registry"]
+  },
+  {
+    "id": "tf-672",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Private Registry", "Governance"],
+    "type": "applied",
+    "question": "A Sentinel policy requires every non-root module to be a private module, or a public module from your own private registry. Assuming `terraform-aws-modules/vpc/aws` was never added to the private registry, which module block would the policy flag?\n```hcl\nmodule \"vpc_a\" {\n  source = \"app.terraform.io/acme/vpc/aws\"\n}\n\nmodule \"vpc_b\" {\n  source = \"terraform-aws-modules/vpc/aws\"\n}\n```",
+    "answer": "`vpc_b`. It comes straight from the public registry, not from the organization's private registry. `vpc_a` uses a private registry address (`app.terraform.io/ORG/NAME/PROVIDER`), so it passes. Adding the public module to the private registry would make `vpc_b`-style usage compliant.",
+    "tags": ["sentinel", "policy", "modules"]
+  },
+  {
+    "id": "tf-673",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Private Registry", "Governance"],
+    "type": "concept",
+    "question": "Besides restricting module sources, what other kind of module usage rule can a Sentinel policy enforce for the private registry, and where does HashiCorp provide an example?",
+    "answer": "A policy requiring that modules use **recent versions**. HashiCorp publishes an example in its `terraform-sentinel-policies` GitHub repo: `use-recent-versions-from-pmr.sentinel` (PMR = private module registry).",
+    "tags": ["sentinel", "policy", "versions"]
+  },
+  {
+    "id": "tf-674",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Private Registry", "Private Artifacts"],
+    "type": "applied",
+    "question": "Team A (organization `alpha`) publishes a private module in HCP Terraform. Team B belongs to a different organization, `beta`, and wants to consume it. What decides whether this works, and in which product is cross-organization use possible at all?",
+    "answer": "Private artifacts are visible only to members of the owning organization, so by default `beta` cannot use it. Cross-organization use is possible only in **Terraform Enterprise**, and only if the organizations are **configured to share** with each other via registry sharing.",
+    "tags": ["tfe", "access", "modules"]
   }
 ]
