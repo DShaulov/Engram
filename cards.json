@@ -5558,5 +5558,53 @@
     "question": "Why can continuous validation produce false positives, and how do you avoid them?",
     "answer": "An assessment runs a speculative plan, and check blocks are evaluated last. If a data source's queried value changed since the last run, the plan uses the new value, so the check evaluates against a possible future state even though infrastructure hasn't changed. Avoid this by using nested data sources that query the actual resource configuration rather than a computed \"latest\" value.",
     "tags": ["check-blocks", "data-sources", "speculative-plan"]
+  },
+  {
+    "id": "tf-696",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Run Triggers"],
+    "type": "concept",
+    "question": "What does a run trigger do in HCP Terraform, and which event in the source workspace fires it?",
+    "answer": "It links your workspace to one or more source workspaces in the same organization. A run in a source workspace that **applies successfully** automatically queues a new run in your (downstream) workspace. Use it when your configuration depends on infrastructure or values produced by another workspace.",
+    "tags": ["run-triggers", "dependencies"]
+  },
+  {
+    "id": "tf-697",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Run Triggers"],
+    "type": "concept",
+    "question": "How many source workspaces can a single workspace connect to through run triggers?",
+    "answer": "Up to **20** source workspaces per workspace.",
+    "tags": ["run-triggers", "limits"]
+  },
+  {
+    "id": "tf-698",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Run Triggers"],
+    "type": "concept",
+    "question": "Which permissions are required to create a run trigger?",
+    "answer": "**Admin access** on the workspace you are configuring, plus permission to **read runs** on the source workspace you want to connect. Admins can also delete any of their workspace's run triggers.",
+    "tags": ["run-triggers", "permissions"]
+  },
+  {
+    "id": "tf-699",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Run Triggers"],
+    "type": "applied",
+    "question": "A workspace has **auto-apply** enabled, yet a run queued by a run trigger stops and waits for confirmation. Why, and which setting changes it?",
+    "answer": "Runs started by a run trigger do not auto-apply by default. They only do so when the separate **Auto-apply run triggers** setting is enabled. That setting is independent of the workspace's normal auto-apply setting, so enabling one does not affect the other.",
+    "tags": ["run-triggers", "auto-apply"]
+  },
+  {
+    "id": "tf-700",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Run Triggers"],
+    "type": "concept",
+    "question": "To read another HCP Terraform workspace's outputs, which data source does HashiCorp recommend over `terraform_remote_state`, and why?",
+    "answer": "`tfe_outputs` (from the HCP Terraform/Enterprise provider). It is more secure because it does not require full access to the source workspace's state just to fetch outputs. `terraform_remote_state` reads root-level outputs, and the source workspace must be configured to allow that access first.",
+    "tags": ["remote-state", "tfe-provider", "security"]
+  },
+  {
+    "id": "tf-701",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Run Triggers"],
+    "type": "concept",
+    "question": "Where do you configure a run trigger, and how can you tell a run was started by one?",
+    "answer": "On the **downstream** workspace: Settings → Run Triggers → pick a workspace under Source Workspaces → Add workspace. A triggered run's details link to the source workspace and the applied run that fired it. The source workspace's plan and apply details also state which workspaces will be started automatically.",
+    "tags": ["run-triggers", "ui"]
   }
 ]
