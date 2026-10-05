@@ -5750,5 +5750,69 @@
     "question": "When is the configuration directory uploaded to HCP Terraform, where must `.terraformignore` live, and what are its pattern rules?",
     "answer": "The upload happens on a remote `terraform plan` or `terraform apply` in a CLI-driven run, not at `init`. Terraform parses only the `.terraformignore` at the root of the configuration directory. Rules follow `.gitignore` style: `#` starts a comment, blank lines are ignored, a trailing `/` marks a directory, and a leading `!` negates a pattern. Negation can hurt performance when ignoring large directories, so place negation rules as early as possible or avoid them.",
     "tags": ["terraformignore", "plan", "apply"]
-  }
+  },
+  {
+    "id": "tf-720",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "CLI Integration", "Login"],
+    "type": "concept",
+    "question": "What does `terraform login` do, and why is it limited to interactive use?",
+    "answer": "It obtains an API token for HCP Terraform, Terraform Enterprise, or another host offering Terraform services. It launches a web browser on the same machine where Terraform runs, so it only works interactively, not in unattended automation.",
+    "tags": ["login", "cli", "authentication"]
+  },
+  {
+    "id": "tf-721",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "CLI Integration", "Login"],
+    "type": "concept",
+    "question": "Which host does `terraform login` target when you give no hostname, and how do you log in to HCP Europe?",
+    "answer": "With no hostname it assumes HCP Terraform at `app.terraform.io`. For an HCP Europe organization you must specify the hostname explicitly: `terraform login app.terraform.io/eu`.",
+    "tags": ["login", "hcp-europe", "cli"]
+  },
+  {
+    "id": "tf-722",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "CLI Integration", "Login"],
+    "type": "applied",
+    "question": "A CI job runs this on a build agent with no browser, and it cannot complete:\n```bash\nterraform login\n```\nWhy, and what is the fix?",
+    "answer": "`terraform login` launches a browser on the host running Terraform, so it cannot work unattended. Configure credentials manually in the CLI configuration file's credentials block instead (or supply the token via a `TF_TOKEN_` environment variable).",
+    "tags": ["login", "ci-cd", "automation"]
+  },
+  {
+    "id": "tf-723",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "CLI Integration", "Login"],
+    "type": "concept",
+    "question": "By default, where does `terraform login` store the API token, and what is the security concern?",
+    "answer": "In plain text in a local CLI configuration file called `credentials.tfrc.json`. Anyone who can read that file can use the token. Before saving, Terraform tells you exactly where it will write and lets you cancel.",
+    "tags": ["login", "security", "credentials"]
+  },
+  {
+    "id": "tf-724",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "CLI Integration", "Login"],
+    "type": "concept",
+    "question": "How can you avoid storing the `terraform login` token in plain text in `credentials.tfrc.json`?",
+    "answer": "Configure a credentials helper program in the CLI configuration. It stores and later retrieves credentials in another system, such as your organization's existing secrets management system.",
+    "tags": ["login", "security", "credentials-helper"]
+  },
+  {
+    "id": "tf-725",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "CLI Integration", "Login"],
+    "type": "concept",
+    "question": "Is `terraform login` limited to HCP Terraform? Which servers does it work with?",
+    "answer": "No. It works with any server that supports the Terraform login protocol, including HCP Terraform and Terraform Enterprise, so you can pass a custom hostname.",
+    "tags": ["login", "terraform-enterprise", "login-protocol"]
+  },
+  {
+    "id": "tf-726",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "CLI Integration", "Login"],
+    "type": "concept",
+    "question": "To which hosts does Terraform CLI send the stored login token, and is it sent on every command?",
+    "answer": "Only to the host the token was issued for, as a bearer token in the `Authorization` header. It is used only when a command talks to that host (cloud/remote backend, private registry), not on purely local workflows. Providers such as `aws` never see it.",
+    "tags": ["login", "token", "security"]
+  },
+  {
+    "id": "tf-727",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "CLI Integration", "Login"],
+    "type": "applied",
+    "question": "CI must authenticate to `app.terraform.io` without running `terraform login` or writing a credentials file. Which environment variable do you set?",
+    "answer": "`TF_TOKEN_app_terraform_io`. The name is `TF_TOKEN_` plus the hostname with dots replaced by underscores (hyphens in hostnames become double underscores).",
+    "tags": ["login", "ci-cd", "environment-variables"]
+  } 
 ]
