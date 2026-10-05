@@ -5390,5 +5390,53 @@
     "question": "Team A (organization `alpha`) publishes a private module in HCP Terraform. Team B belongs to a different organization, `beta`, and wants to consume it. What decides whether this works, and in which product is cross-organization use possible at all?",
     "answer": "Private artifacts are visible only to members of the owning organization, so by default `beta` cannot use it. Cross-organization use is possible only in **Terraform Enterprise**, and only if the organizations are **configured to share** with each other via registry sharing.",
     "tags": ["tfe", "access", "modules"]
+  },
+  {
+    "id": "tf-675",
+    "path": ["DevOps","Terraform","HCP Terraform","Governance","Policy Enforcement"],
+    "type": "concept",
+    "question": "Which three policy frameworks can you use in HCP Terraform, and what is each one?",
+    "answer": "1) **Terraform policy** (beta): native HCL-based framework. 2) **Sentinel**: HashiCorp's policy-as-code framework. 3) **OPA**: Open Policy Agent, policies written in Rego.",
+    "tags": ["policy", "sentinel", "opa"]
+  },
+  {
+    "id": "tf-676",
+    "path": ["DevOps","Terraform","HCP Terraform","Governance","Policy Enforcement"],
+    "type": "concept",
+    "question": "Which policy frameworks work with workspaces, which work with Stacks, and when are policies evaluated in each?",
+    "answer": "**Terraform policy** works with both workspaces and Stacks. **Sentinel and OPA are workspaces only.** Workspaces: policies evaluate during workspace runs. Stacks: policies evaluate per deployment in the Stack.",
+    "tags": ["policy", "stacks", "workspaces"]
+  },
+  {
+    "id": "tf-677",
+    "path": ["DevOps","Terraform","HCP Terraform","Governance","Policy Enforcement"],
+    "type": "concept",
+    "question": "What Terraform version does Terraform policy require, and how do you get access to that kind of build in HCP Terraform?",
+    "answer": "Terraform **v1.16 alpha or later**. Enable alpha builds in the organization's **Settings → General → Show Terraform pre-releases**.",
+    "tags": ["policy", "version"]
+  },
+  {
+    "id": "tf-678",
+    "path": ["DevOps","Terraform","HCP Terraform","Governance","Policy Enforcement"],
+    "type": "applied",
+    "question": "A team creates one policy set containing both Sentinel and OPA policies and attaches it to a workspace. What is wrong, and what is the correct approach?",
+    "answer": "A policy set can only contain policies from a **single framework**. Create **two policy sets** (one Sentinel, one OPA) and attach both to the same workspace. Multiple policy sets of different frameworks can apply to the same workspace or Stack.",
+    "tags": ["policy", "policy-set"]
+  },
+  {
+    "id": "tf-679",
+    "path": ["DevOps","Terraform","HCP Terraform","Governance","Policy Enforcement"],
+    "type": "concept",
+    "question": "What is the recommended way to store policies for a policy set, and what can a policy set be scoped to?",
+    "answer": "Store policies in a **VCS repository** (policy-as-code: standardization, security, auditability) rather than authoring them in the UI. You can also create policy sets via the **API**. Scope: **globally**, or to specific **projects, workspaces, Stacks or deployments**. The plan is checked against the policy set on every run.",
+    "tags": ["policy-set", "vcs", "api"]
+  },
+  {
+    "id": "tf-680",
+    "path": ["DevOps","Terraform","HCP Terraform","Governance","Policy Enforcement"],
+    "type": "applied",
+    "question": "When are Sentinel/OPA policies evaluated, and what happens with (a) a workspace in **local** execution mode and (b) a CLI-driven run using a `cloud` block?\n```hcl\nterraform {\n  cloud {\n    organization = \"acme\"\n    workspaces { name = \"prod\" }\n  }\n}\n```",
+    "answer": "Policies are evaluated by HCP Terraform / Terraform Enterprise during a **remote run** (after plan). (a) **Local** execution mode: the plan runs on your machine, HCP Terraform only stores state, so **no policy sets are evaluated**. (b) The `cloud` block: you type `terraform plan/apply` locally, but the run executes remotely, so **policies do apply** and failed ones can stop the run depending on enforcement level.",
+    "tags": ["policy", "cli", "execution-mode"]
   }
 ]
