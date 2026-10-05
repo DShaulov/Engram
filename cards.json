@@ -5486,5 +5486,77 @@
     "question": "A project's execution mode is changed from Remote to Agent. What happens to the workspaces already in the project, and to workspaces created afterward?",
     "answer": "Workspaces created after the change inherit the new project default (Agent). The docs only say that new workspaces inherit it, so don't assume existing workspaces are switched automatically.",
     "tags": ["execution-mode", "agents", "workspaces"]
+  },
+  {
+    "id": "tf-687",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Health"],
+    "type": "concept",
+    "question": "What workspace requirements must be met to receive health assessments?",
+    "answer": "Terraform 0.15.4+ for drift detection only, 1.3.0+ for drift detection AND continuous validation. Execution mode must be remote or agent (not local). The workspace also needs at least one successful apply, since there's no assessment without real infrastructure.",
+    "tags": ["drift-detection", "continuous-validation", "execution-mode"]
+  },
+  {
+    "id": "tf-688",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Health"],
+    "type": "concept",
+    "question": "What causes HCP Terraform to pause health assessments in a workspace, and what resumes them?",
+    "answer": "A latest run that ended errored, canceled or discarded pauses them. This applies to all run types, including plan-only and speculative plans. They resume at the next assessment period after a successful applied run.",
+    "tags": ["runs", "scheduling"]
+  },
+  {
+    "id": "tf-689",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Health"],
+    "type": "concept",
+    "question": "What happens if you start a new run while a health assessment is in progress, and what's the consequence for busy workspaces?",
+    "answer": "Assessments never interrupt runs. The new run cancels the in-progress assessment, which is retried at the next assessment period. Workspaces with very frequent runs may therefore rarely get assessed.",
+    "tags": ["runs", "scheduling"]
+  },
+  {
+    "id": "tf-690",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Health", "Drift Detection"],
+    "type": "concept",
+    "question": "What is the difference between configuration drift and state drift, and which one does drift detection catch?",
+    "answer": "Configuration drift: an external change to a remote object invalidates your configuration. State drift: an external change does NOT invalidate your configuration, it only makes the state stale. Drift detection catches only configuration drift. State drift is handled with refresh-only mode.",
+    "tags": ["state", "refresh-only"]
+  },
+  {
+    "id": "tf-691",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Health", "Drift Detection"],
+    "type": "applied",
+    "question": "Given this config, classify each external change as configuration drift or state drift:\n```hcl\nresource \"aws_instance\" \"web\" {\n  ami           = \"ami-0abc123\"\n  instance_type = \"t3.micro\"\n}\n```\n1. Someone changes the instance type to `t3.large` in the AWS console.\n2. The instance is stopped and started, and AWS assigns a new public IP.",
+    "answer": "1. Configuration drift: the real instance now contradicts the `instance_type` you wrote, so drift detection flags it.\n2. State drift: the public IP is a computed attribute your config never sets, so the config is still valid and only the recorded state is stale. A plan shows no changes, and a refresh-only run fixes it.",
+    "tags": ["aws", "ec2", "refresh-only"]
+  },
+  {
+    "id": "tf-692",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Health", "Drift Detection"],
+    "type": "concept",
+    "question": "What are the two ways to resolve configuration drift?",
+    "answer": "Overwrite drift: queue a new plan and apply it to revert the real infrastructure to match the config. Accept drift: update the configuration to include the drifted change and push a new configuration version, so the next apply doesn't revert it.",
+    "tags": ["runs", "configuration"]
+  },
+  {
+    "id": "tf-693",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Health"],
+    "type": "concept",
+    "question": "Who can do what with health assessments (view status, change workspace settings, change org settings, trigger on-demand)?",
+    "answer": "View health status: read access to the workspace. Change workspace health settings: workspace admin. Trigger an on-demand assessment: workspace admin. Change organization health settings: organization owner.",
+    "tags": ["permissions", "rbac"]
+  },
+  {
+    "id": "tf-694",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Health"],
+    "type": "concept",
+    "question": "What are the key facts about on-demand health assessments?",
+    "answer": "They are UI only (the **Start health assessment** button on the Health page), not available via API. They require workspace admin and a workspace meeting all requirements. You can't start one while another is in progress, and an on-demand run resets the schedule for automatic assessments.",
+    "tags": ["scheduling", "permissions"]
+  },
+  {
+    "id": "tf-695",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Workspaces", "Health", "Continuous Validation"],
+    "type": "concept",
+    "question": "Why can continuous validation produce false positives, and how do you avoid them?",
+    "answer": "An assessment runs a speculative plan, and check blocks are evaluated last. If a data source's queried value changed since the last run, the plan uses the new value, so the check evaluates against a possible future state even though infrastructure hasn't changed. Avoid this by using nested data sources that query the actual resource configuration rather than a computed \"latest\" value.",
+    "tags": ["check-blocks", "data-sources", "speculative-plan"]
   }
 ]
