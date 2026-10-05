@@ -5438,5 +5438,53 @@
     "question": "When are Sentinel/OPA policies evaluated, and what happens with (a) a workspace in **local** execution mode and (b) a CLI-driven run using a `cloud` block?\n```hcl\nterraform {\n  cloud {\n    organization = \"acme\"\n    workspaces { name = \"prod\" }\n  }\n}\n```",
     "answer": "Policies are evaluated by HCP Terraform / Terraform Enterprise during a **remote run** (after plan). (a) **Local** execution mode: the plan runs on your machine, HCP Terraform only stores state, so **no policy sets are evaluated**. (b) The `cloud` block: you type `terraform plan/apply` locally, but the run executes remotely, so **policies do apply** and failed ones can stop the run depending on enforcement level.",
     "tags": ["policy", "cli", "execution-mode"]
+  },
+  {
+    "id": "tf-681",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Projects"],
+    "type": "concept",
+    "question": "What are HCP Terraform projects for, where do their permissions sit relative to org-level and workspace-level access, and which editions are needed to manage project permissions?",
+    "answer": "Projects group workspaces and Stacks and scope team access to them. Each project has its own permission set, and granting a team access covers every workspace and Stack in the project. Project-level permissions are more granular than organization-level ones but broader than individual workspace grants. Using projects is available to all users, but managing project permissions requires the Essentials, Standard, or Premium edition.",
+    "tags": ["access-control", "editions"]
+  },
+  {
+    "id": "tf-682",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Projects", "Default Project"],
+    "type": "concept",
+    "question": "What are the rules for the Default Project in HCP Terraform?",
+    "answer": "Every workspace and Stack belongs to exactly one project, and by default they all land in the organization's Default Project. You can rename the Default Project but cannot delete it. You can choose a project when creating a workspace and move it to another project later.",
+    "tags": ["workspaces", "stacks"]
+  },
+  {
+    "id": "tf-683",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Projects", "Permissions"],
+    "type": "applied",
+    "question": "A user has only the \"Manage Workspaces\" team permission and creates a new workspace. Which project does it go in? What would they need to create it in a different project?",
+    "answer": "It goes into the Default Project automatically, and the user cannot access the metadata of other projects. To create workspaces in another project they also need the \"Manage Projects & Workspaces\" permission, or the admin role on that specific project.",
+    "tags": ["team-permissions", "workspaces"]
+  },
+  {
+    "id": "tf-684",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Projects", "Permissions"],
+    "type": "concept",
+    "question": "What does the \"Manage all Projects\" team permission allow?",
+    "answer": "Users can view, edit, delete, and assign team access to all of an organization's projects. This is different from \"Manage Workspaces\", which governs workspaces and does not give access to other projects' metadata.",
+    "tags": ["team-permissions"]
+  },
+  {
+    "id": "tf-685",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Projects", "Execution Mode"],
+    "type": "concept",
+    "question": "What are the four project execution mode options, and which restrictions apply?",
+    "answer": "Organization Default (inherits the org's mode, which is either Remote or Local), Remote (plan and apply run on HCP Terraform or Terraform Enterprise infrastructure), Local (runs on machines you control, and HCP Terraform only stores and syncs state), and Agent (your agent executes plan and apply, managed by HCP Terraform or Terraform Enterprise). The org-level default can only be Remote or Local, and Stacks do not support local execution.",
+    "tags": ["execution-mode", "agents", "stacks"]
+  },
+  {
+    "id": "tf-686",
+    "path": ["DevOps", "Terraform", "HCP Terraform", "Projects", "Execution Mode"],
+    "type": "applied",
+    "question": "A project's execution mode is changed from Remote to Agent. What happens to the workspaces already in the project, and to workspaces created afterward?",
+    "answer": "Workspaces created after the change inherit the new project default (Agent). The docs only say that new workspaces inherit it, so don't assume existing workspaces are switched automatically.",
+    "tags": ["execution-mode", "agents", "workspaces"]
   }
 ]
